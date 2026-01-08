@@ -1,53 +1,81 @@
-> Edited for use in IDX on 07/09/12
+# HR Management System (React Native)
 
-# Welcome to your Expo app 👋
+Production-ready MVP for an HR Management System built with bare React Native + TypeScript. Includes auth, attendance validation, leave requests, and performance updates.
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Features
+- Auth flow with secure token storage + refresh handling
+- Home dashboard with module shortcuts
+- Attendance validation (GPS + office proof)
+- Leave applications with validation and status chips
+- Performance cycle submissions
+- TanStack Query for server state + Zustand for auth
 
-## Get started
+## Tech Stack
+- React Native (bare) + TypeScript
+- NativeWind (Tailwind for RN)
+- React Navigation (stack + tabs)
+- TanStack Query, Zustand
+- React Hook Form + Zod
+- Axios with refresh interceptor
 
-#### Android
+## Getting Started
+1. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+2. If icons are missing, link icon fonts (one-time):
+   ```bash
+   npx react-native-asset
+   ```
+3. Create your env file:
+   ```bash
+   cp .env.example .env
+   ```
+4. Start Metro:
+   ```bash
+   pnpm start
+   ```
+5. Run Android:
+   ```bash
+   pnpm android
+   ```
+6. Run iOS (macOS only):
+   ```bash
+   cd ios && pod install
+   cd ..
+   pnpm ios
+   ```
 
-Android previews are defined as a `workspace.onStart` hook and started as a vscode task when the workspace is opened/started.
+## Environment Variables
+These are loaded using `react-native-config` and validated in `src/config/env.ts`.
 
-Note, if you can't find the task, either:
-- Rebuild the environment (using command palette: `IDX: Rebuild Environment`), or
-- Run `npm run android -- --tunnel` command manually run android and see the output in your terminal. The device should pick up this new command and switch to start displaying the output from it.
+- `API_BASE_URL` - Base URL for backend API
+- `OFFICE_LAT` - Office latitude
+- `OFFICE_LNG` - Office longitude
+- `OFFICE_RADIUS_M` - Geofence radius in meters
 
-In the output of this command/task, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You'll also find options to open the app's developer menu, reload the app, and more.
-
-#### Web
-
-Web previews will be started and managred automatically. Use the toolbar to manually refresh.
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+## Build Instructions
+### Android APK
 ```bash
-npm run reset-project
+cd android
+./gradlew assembleRelease
+```
+APK output: `android/app/build/outputs/apk/release/app-release.apk`
+
+### iOS IPA
+Open `ios/HrManagementSystem.xcworkspace` in Xcode and archive, or use:
+```bash
+cd ios
+xcodebuild -workspace HrManagementSystem.xcworkspace -scheme HrManagementSystem -configuration Release
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Scripts
+- `pnpm start` - Metro bundler
+- `pnpm android` - Run on Android
+- `pnpm ios` - Run on iOS
+- `pnpm lint` - Lint the project
+- `pnpm typecheck` - TypeScript checks
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Notes
+- Attendance validation uses GPS + `/attendance/office-proof` backend verification.
+- Leave attachments accept a file URI input and send multipart requests when provided.
