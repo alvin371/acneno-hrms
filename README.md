@@ -2,8 +2,46 @@
 
 Production-ready MVP for an HR Management System built with bare React Native + TypeScript. Includes auth, attendance validation, leave requests, and performance updates.
 
+## AI-Readable Overview
+This section is intentionally structured so an AI can quickly understand the full scope.
+
+### Product Goal
+Mobile HR app for employees to authenticate, check in with location proof, request leave, and submit performance updates.
+
+### Core Modules
+- Authentication: login, secure token storage, automatic refresh on expiry
+- Biometrics: PIN, face verification, fingerprint
+- Home dashboard: quick access to modules
+- Attendance: GPS-based validation plus office-proof upload/verification
+- Leave: request form with validation, status chips, optional file attachment
+- Performance: cycle submission flow
+
+### Key Flows (Happy Path)
+- Sign in -> receive tokens -> store securely -> route to dashboard
+- Attendance -> capture GPS -> validate vs office geofence -> upload office proof
+- Leave -> fill request -> validate dates/fields -> submit -> show status
+- Performance -> fill cycle update -> submit -> show confirmation
+
+### Data & Validation Rules
+- Forms use React Hook Form + Zod for client-side validation
+- Attendance requires GPS coords and office radius validation
+- Leave attachments are optional and sent as multipart when provided
+
+### State Management & Networking
+- Server state: TanStack Query
+- Auth/session state: Zustand
+- HTTP: Axios with refresh interceptor
+
+### App Structure (high level)
+- `src/features`: feature modules (auth, attendance, leave, performance)
+- `src/navigation`: stack/tab navigation setup
+- `src/api`: API clients and request helpers
+- `src/store`: auth/session state
+- `src/config`: env validation and config
+
 ## Features
 - Auth flow with secure token storage + refresh handling
+- PIN, face verification, and fingerprint support
 - Home dashboard with module shortcuts
 - Attendance validation (GPS + office proof)
 - Leave applications with validation and status chips
