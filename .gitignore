@@ -9,8 +9,6 @@ dist/
 web-build/
 
 # React Native native projects
-android/
-ios/
 
 # Native
 .kotlin/
@@ -20,6 +18,15 @@ ios/
 *.p12
 *.key
 *.mobileprovision
+android/.gradle/
+android/.cxx/
+android/app/.cxx/
+android/app/build/
+android/build/
+android/local.properties
+android/app/debug.keystore
+ios/Pods/
+ios/build/
 
 # Metro
 .metro-health-check*
