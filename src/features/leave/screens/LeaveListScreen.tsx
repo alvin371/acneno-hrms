@@ -58,7 +58,7 @@ export const LeaveListScreen = ({ navigation }: Props) => {
               <Card key={leave.id} className="gap-3">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-base font-semibold text-ink-700">
-                    {leave.leaveType}
+                    {leave.leaveTypeName}
                   </Text>
                   <StatusChip
                     label={leave.status}

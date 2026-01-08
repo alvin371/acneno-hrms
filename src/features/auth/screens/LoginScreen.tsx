@@ -12,14 +12,11 @@ import { getErrorMessage } from '@/api/error';
 import { showToast } from '@/utils/toast';
 
 const schema = z.object({
-  email: z.string().email('Enter a valid email'),
+  username: z.string().min(3, 'Username must be at least 3 characters'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 type FormValues = z.infer<typeof schema>;
-
-const DEMO_EMAIL = 'demo@acme.co';
-const DEMO_PASSWORD = 'password';
 
 export const LoginScreen = () => {
   const setSession = useAuthStore((state) => state.setSession);
@@ -30,13 +27,13 @@ export const LoginScreen = () => {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      email: '',
+      username: '',
       password: '',
     },
   });
 
   const mutation = useMutation({
-    mutationFn: (values: FormValues) => login(values.email, values.password),
+    mutationFn: (values: FormValues) => login(values.username, values.password),
     onSuccess: async (data) => {
       await setSession({
         accessToken: data.accessToken,
@@ -51,24 +48,6 @@ export const LoginScreen = () => {
   });
 
   const onSubmit = async (values: FormValues) => {
-    if (
-      values.email.trim().toLowerCase() === DEMO_EMAIL &&
-      values.password === DEMO_PASSWORD
-    ) {
-      await setSession({
-        accessToken: 'demo-access-token',
-        refreshToken: 'demo-refresh-token',
-        user: {
-          id: 'demo-user',
-          name: 'Demo Account',
-          email: DEMO_EMAIL,
-          role: 'Demo',
-        },
-      });
-      showToast('success', 'Signed in with the demo account.');
-      return;
-    }
-
     mutation.mutate(values);
   };
 
@@ -94,10 +73,10 @@ export const LoginScreen = () => {
         <View className="w-full gap-5 rounded-3xl border-2 border-black bg-white p-6">
           <FormInput
             control={control}
-            name="email"
-            label="Email"
-            placeholder="you@company.com"
-            keyboardType="email-address"
+            name="username"
+            label="Username"
+            placeholder="admin"
+            keyboardType="default"
             labelClassName="text-xs uppercase tracking-widest text-zinc-600"
             inputClassName="border-zinc-300 bg-white text-black placeholder:text-zinc-400"
           />
@@ -119,14 +98,6 @@ export const LoginScreen = () => {
             className="rounded-2xl bg-black"
             labelClassName="text-white"
           />
-        </View>
-        <View className="rounded-2xl border border-zinc-200 bg-zinc-100 p-4">
-          <Text className="text-sm text-black text-left">
-            Demo account: {DEMO_EMAIL} | password: {DEMO_PASSWORD}
-          </Text>
-          <Text className="mt-1 text-xs text-zinc-600 text-left">
-            Demo sign-in bypasses the API.
-          </Text>
         </View>
       </View>
     </Screen>

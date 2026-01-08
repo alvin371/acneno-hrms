@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "108265340428",
+    "project_id": "hrms-acneno",
+    "storage_bucket": "hrms-acneno.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:108265340428:android:48a03d491f850e84d6f829",
+        "android_client_info": {
+          "package_name": "com.hrmanagementsystem"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLUGZ2tJIz6fK5MJcEmdMErun195JaGrc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

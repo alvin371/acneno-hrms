@@ -16,7 +16,7 @@ import type { LeaveStackParamList } from '@/navigation/types';
 
 const schema = z
   .object({
-    leaveType: z.string().min(1, 'Select a leave type'),
+    leaveTypeId: z.string().min(1, 'Select a leave type'),
     startDate: z.string().min(1, 'Start date is required'),
     endDate: z.string().min(1, 'End date is required'),
     reason: z.string().min(1, 'Reason is required'),
@@ -42,16 +42,16 @@ type FormValues = z.infer<typeof schema>;
 type Props = NativeStackScreenProps<LeaveStackParamList, 'LeaveCreate'>;
 
 const leaveTypeOptions = [
-  { label: 'Annual Leave', value: 'Annual' },
-  { label: 'Sick Leave', value: 'Sick' },
-  { label: 'Unpaid Leave', value: 'Unpaid' },
+  { label: 'Annual Leave', value: '1' },
+  { label: 'Sick Leave', value: '2' },
+  { label: 'Unpaid Leave', value: '3' },
 ];
 
 export const LeaveCreateScreen = ({ navigation }: Props) => {
   const { control, handleSubmit } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      leaveType: '',
+      leaveTypeId: '',
       startDate: '',
       endDate: '',
       reason: '',
@@ -77,6 +77,7 @@ export const LeaveCreateScreen = ({ navigation }: Props) => {
   const onSubmit = (values: FormValues) => {
     mutation.mutate({
       ...values,
+      leaveTypeId: Number(values.leaveTypeId),
       attachmentUri: values.attachmentUri?.trim() || undefined,
     });
   };
@@ -101,7 +102,7 @@ export const LeaveCreateScreen = ({ navigation }: Props) => {
         <View className="gap-4">
           <FormSelect
             control={control}
-            name="leaveType"
+            name="leaveTypeId"
             label="Leave type"
             placeholder="Choose a leave type"
             options={leaveTypeOptions}

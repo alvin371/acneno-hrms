@@ -1,9 +1,9 @@
 import { authClient } from '@/api/authClient';
 import type { AuthResponse, AuthTokens } from '@/api/types';
 
-export const login = async (email: string, password: string) => {
+export const login = async (username: string, password: string) => {
   const response = await authClient.post<AuthResponse>('/auth/login', {
-    email,
+    username,
     password,
   });
   return response.data;
