@@ -19,12 +19,15 @@ web-build/
 *.key
 *.mobileprovision
 android/.gradle/
+android/.gradle-local/
 android/.cxx/
 android/app/.cxx/
 android/app/build/
 android/build/
 android/local.properties
 android/app/debug.keystore
+android/keystore.properties
+android/*.keystore
 ios/Pods/
 ios/build/
 

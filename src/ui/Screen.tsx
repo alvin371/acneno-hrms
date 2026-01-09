@@ -8,14 +8,23 @@ type ScreenProps = {
   children: ReactNode;
   scroll?: boolean;
   className?: string;
+  bottomInset?: number;
 };
 
-export const Screen = ({ children, scroll, className }: ScreenProps) => {
+export const Screen = ({
+  children,
+  scroll,
+  className,
+  bottomInset = 96,
+}: ScreenProps) => {
   if (scroll) {
     return (
       <SafeAreaView className="flex-1 bg-slate-50">
         <ScrollView
-          contentContainerStyle={{ padding: tokens.spacing.page }}
+          contentContainerStyle={{
+            padding: tokens.spacing.page,
+            paddingBottom: tokens.spacing.page + bottomInset,
+          }}
           className={cn('flex-1', className)}
         >
           {children}

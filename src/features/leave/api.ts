@@ -1,12 +1,18 @@
 import { apiClient } from '@/api/client';
-import type { LeaveQuota, LeaveRecord } from '@/api/types';
+import type { Holiday, LeaveQuota, LeaveRecord } from '@/api/types';
+
+type LeaveAttachment = {
+  uri: string;
+  name: string;
+  type: string;
+};
 
 type LeavePayload = {
   leaveTypeId: number;
   startDate: string;
   endDate: string;
   reason: string;
-  attachmentUri?: string | null;
+  attachment?: LeaveAttachment | null;
 };
 
 export const getLeaves = async () => {
@@ -19,17 +25,30 @@ export const getLeaveQuota = async () => {
   return response.data;
 };
 
+export const getHolidays = async (start?: string, end?: string) => {
+  const response = await apiClient.get<{ data: Holiday[] }>(
+    '/holidays',
+    {
+      params: start && end ? { start, end } : undefined,
+    }
+  );
+  return response.data.data;
+};
+
 export const createLeave = async (payload: LeavePayload) => {
-  if (payload.attachmentUri) {
+  if (payload.attachment?.uri) {
+    const attachmentName = payload.attachment.name?.trim() || 'attachment';
+    const attachmentType =
+      payload.attachment.type?.trim() || 'application/octet-stream';
     const formData = new FormData();
     formData.append('leave_type_id', String(payload.leaveTypeId));
     formData.append('start_date', payload.startDate);
     formData.append('end_date', payload.endDate);
     formData.append('reason', payload.reason);
     formData.append('attachment', {
-      uri: payload.attachmentUri,
-      name: 'attachment',
-      type: 'application/octet-stream',
+      uri: payload.attachment.uri,
+      name: attachmentName,
+      type: attachmentType,
     } as any);
 
     const response = await apiClient.post('/leave', formData, {

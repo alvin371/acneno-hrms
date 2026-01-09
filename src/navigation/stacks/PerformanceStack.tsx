@@ -6,7 +6,7 @@ import type { PerformanceStackParamList } from '@/navigation/types';
 const Stack = createNativeStackNavigator<PerformanceStackParamList>();
 
 export const PerformanceStack = () => (
-  <Stack.Navigator>
+  <Stack.Navigator id="PerformanceStack">
     <Stack.Screen
       name="PerformanceList"
       component={PerformanceListScreen}

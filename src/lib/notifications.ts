@@ -1,5 +1,4 @@
 import PushNotification, {
-  Importance,
   type PushNotificationObject,
 } from 'react-native-push-notification';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
@@ -16,7 +15,7 @@ const configureNotifications = () => {
   }
 
   PushNotification.configure({
-    onNotification: (notification) => {
+    onNotification: (notification: any) => {
       if ('finish' in notification && typeof notification.finish === 'function') {
         notification.finish(PushNotificationIOS.FetchResult.NoData);
       }
@@ -33,7 +32,7 @@ const ensureChannel = () =>
       {
         channelId: DEFAULT_CHANNEL_ID,
         channelName: 'Check-in/out reminders',
-        importance: Importance.HIGH,
+        importance: 4, // HIGH importance
       },
       () => resolve(),
     );
@@ -58,10 +57,7 @@ export const scheduleDailyCheckInOutNotifications = async () => {
   PushNotification.cancelLocalNotifications({ id: CHECKIN_NOTIFICATION_ID });
   PushNotification.cancelLocalNotifications({ id: CHECKOUT_NOTIFICATION_ID });
 
-  const baseNotification: Pick<
-    PushNotificationObject,
-    'channelId' | 'message' | 'title' | 'allowWhileIdle' | 'playSound'
-  > = {
+  const baseNotification: Partial<PushNotificationObject> = {
     channelId: DEFAULT_CHANNEL_ID,
     allowWhileIdle: true,
     playSound: true,

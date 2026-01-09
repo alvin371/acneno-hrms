@@ -17,7 +17,7 @@ const schema = z.object({
   cycle: z.string().min(1, 'Cycle is required'),
   achievements: z.string().min(1, 'Achievements are required'),
   challenges: z.string().min(1, 'Challenges are required'),
-  selfScore: z.coerce.number().min(1).max(5),
+  selfScore: z.number().min(1).max(5),
   notes: z.string().optional(),
 });
 
