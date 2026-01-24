@@ -186,7 +186,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const result = await Keychain.getGenericPassword({
         service: BIOMETRY_SECRET_KEY,
         authenticationPrompt: {
-          title: 'Unlock Acme HR',
+          title: 'Unlock Acneno Life',
           subtitle: 'Use biometric authentication',
         },
       });

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Platform, Text, View } from 'react-native';
-import * as Geolocation from 'react-native-geolocation-service';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, Platform, Text, View } from 'react-native';
+import Geolocation, { type GeoPosition } from 'react-native-geolocation-service';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNetInfo } from '@react-native-community/netinfo';
 import {
@@ -19,6 +19,7 @@ import { env } from '@/config/env';
 import { haversineDistanceMeters } from '@/utils/distance';
 import { getErrorMessage } from '@/api/error';
 import { showToast } from '@/utils/toast';
+import { showErrorModal } from '@/utils/errorModal';
 import { getConfig } from '@/features/config/api';
 import {
   checkIn,
@@ -72,13 +73,24 @@ const requestWifiPermission = async () => {
 };
 
 const getCurrentLocation = () =>
-  new Promise<Geolocation.GeoPosition>((resolve, reject) => {
-    Geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 10000,
-      forceRequestLocation: true,
-    });
+  new Promise<GeoPosition>((resolve, reject) => {
+    Geolocation.getCurrentPosition(
+      resolve,
+      () => {
+        Geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 20000,
+          maximumAge: 30000,
+          forceRequestLocation: true,
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+        forceRequestLocation: true,
+      }
+    );
   });
 
 const normalizeBssid = (value?: string | null) =>
@@ -118,25 +130,30 @@ const isUnknownSsid = (value?: string | null) => {
   return normalized === '<unknown ssid>' || normalized === 'unknown ssid';
 };
 
-const isPlaceholderBssid = (value?: string | null) =>
-  normalizeBssid(value) === '02:00:00:00:00';
+const isPlaceholderBssid = (value?: string | null) => {
+  const normalized = normalizeBssid(value);
+  return normalized === '02:00:00:00:00' || normalized === '02:00:00:00:00:00';
+};
 
 export const AttendanceScreen = () => {
   const [now, setNow] = useState(new Date());
   const [permissionStatus, setPermissionStatus] = useState<string>();
-  const [location, setLocation] = useState<Geolocation.GeoPosition | null>(null);
+  const [location, setLocation] = useState<GeoPosition | null>(null);
   const [distanceMeters, setDistanceMeters] = useState<number | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [wifiProofOk, setWifiProofOk] = useState<boolean | null>(null);
   const [wifiProofError, setWifiProofError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const appState = useRef(AppState.currentState);
 
   const configQuery = useQuery({
     queryKey: ['config'],
     queryFn: getConfig,
   });
 
-  const netInfo = useNetInfo();
+  const netInfo = useNetInfo({
+    shouldFetchWiFiSSID: true,
+  });
   const wifiDetails =
     netInfo.type === 'wifi'
       ? (netInfo.details as { ssid?: string; bssid?: string })
@@ -169,15 +186,16 @@ export const AttendanceScreen = () => {
     configQuery.data?.office.radius_m,
   ]);
 
-  const canCheck = isWithinRadius && wifiProofOk === true && !!location;
+  const canCheck = wifiProofOk === true && !!location;
 
   const refreshStatus = async () => {
     setIsRefreshing(true);
+    setWifiProofOk(null);
+    setWifiProofError(null);
     try {
       const status = await requestLocationPermission();
       setPermissionStatus(status);
       if (status !== RESULTS.GRANTED) {
-        setIsRefreshing(false);
         return;
       }
 
@@ -189,41 +207,49 @@ export const AttendanceScreen = () => {
             ? 'Wi-Fi permission is blocked. Enable it in settings.'
             : 'Wi-Fi permission is required to verify the network.'
         );
+        setIsRefreshing(false);
         return;
       }
 
-      let current: Geolocation.GeoPosition;
-      try {
-        current = await getCurrentLocation();
-        setLocationError(null);
-      } catch (error) {
-        setLocation(null);
-        setDistanceMeters(null);
-        setLocationError(getErrorMessage(error));
-        return;
+      // Retry Wi-Fi detection up to 3 times to ensure permissions are processed
+      let attempts = 0;
+      const maxAttempts = 3;
+      let latestNetInfo = netInfo;
+      let currentSsid: string | null = null;
+      let currentBssid: string | null = null;
+      while (attempts < maxAttempts) {
+        const refreshed = await netInfo.refresh?.();
+        if (refreshed) {
+          latestNetInfo = refreshed;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        // Check if we got valid Wi-Fi info
+        const currentWifiDetails =
+          latestNetInfo.type === 'wifi'
+            ? (latestNetInfo.details as { ssid?: string; bssid?: string })
+            : null;
+        currentSsid = currentWifiDetails?.ssid ?? null;
+        currentBssid = currentWifiDetails?.bssid ?? null;
+
+        // If we got valid Wi-Fi info (not unknown/placeholder), break
+        if (
+          (currentSsid && !isUnknownSsid(currentSsid)) ||
+          (currentBssid && !isPlaceholderBssid(currentBssid))
+        ) {
+          break;
+        }
+
+        attempts++;
+        if (attempts < maxAttempts) {
+          // Wait a bit before retrying
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
       }
-      setLocation(current);
+
       const configOffice = configQuery.data?.office as
         | Record<string, unknown>
         | undefined;
-      const officeLat = toNumber(
-        configOffice?.lat ?? configOffice?.latitude ?? env.OFFICE_LAT
-      );
-      const officeLng = toNumber(
-        configOffice?.lng ?? configOffice?.longitude ?? env.OFFICE_LNG
-      );
-      if (officeLat == null || officeLng == null) {
-        setWifiProofOk(false);
-        setWifiProofError('Office location is not configured.');
-        return;
-      }
-      const distance = haversineDistanceMeters(
-        current.coords.latitude,
-        current.coords.longitude,
-        officeLat,
-        officeLng
-      );
-      setDistanceMeters(distance);
 
       const configWifi = configQuery.data?.wifi as
         | Record<string, unknown>
@@ -271,35 +297,58 @@ export const AttendanceScreen = () => {
         return;
       }
 
-      if (netInfo.type !== 'wifi') {
+      if (latestNetInfo.type !== 'wifi') {
         setWifiProofOk(false);
         setWifiProofError('Not connected to Wi-Fi.');
         return;
       }
 
-      if (allowedSsids.length > 0 && !wifiSsid) {
+      const resolvedSsid = isUnknownSsid(currentSsid) ? null : currentSsid;
+      const resolvedBssid = isPlaceholderBssid(currentBssid) ? null : currentBssid;
+
+      if (allowedSsids.length > 0 && !resolvedSsid) {
         setWifiProofOk(false);
+        const platformInstructions = Platform.select({
+          android:
+            Platform.Version >= 33
+              ? 'Grant "Nearby Wi-Fi devices" permission in Settings > Apps > Acneno Life > Permissions.'
+              : 'Enable Location services in Settings > Location.',
+          ios: 'Enable Location services in Settings > Privacy > Location Services.',
+        });
         setWifiProofError(
-          'Unable to read Wi-Fi name. Ensure Wi-Fi and location are enabled.'
+          `Unable to read Wi-Fi name. ${platformInstructions}`
         );
         return;
       }
 
-      if (allowedBssids.length > 0 && !wifiBssid) {
+      if (allowedBssids.length > 0 && !resolvedBssid) {
         setWifiProofOk(false);
+        const platformInstructions = Platform.select({
+          android:
+            Platform.Version >= 33
+              ? 'Grant "Nearby Wi-Fi devices" permission in Settings > Apps > Acneno Life > Permissions.'
+              : 'Enable Location services in Settings > Location.',
+          ios: 'Enable Location services in Settings > Privacy > Location Services.',
+        });
         setWifiProofError(
-          'Unable to read Wi-Fi access point. Ensure Wi-Fi and location are enabled.'
+          `Unable to read Wi-Fi access point. ${platformInstructions}`
         );
         return;
       }
 
-      if (allowedSsids.length > 0 && !allowedSsids.includes(normalizeSsid(wifiSsid))) {
+      if (
+        allowedSsids.length > 0 &&
+        !allowedSsids.includes(normalizeSsid(resolvedSsid))
+      ) {
         setWifiProofOk(false);
         setWifiProofError('Connected Wi-Fi is not the office network.');
         return;
       }
 
-      if (allowedBssids.length > 0 && !allowedBssids.includes(normalizeBssid(wifiBssid))) {
+      if (
+        allowedBssids.length > 0 &&
+        !allowedBssids.includes(normalizeBssid(resolvedBssid))
+      ) {
         setWifiProofOk(false);
         setWifiProofError('Office Wi-Fi access point mismatch.');
         return;
@@ -307,8 +356,8 @@ export const AttendanceScreen = () => {
 
       try {
         const proof = await requestOfficeProof({
-          bssid: wifiBssid ?? undefined,
-          ssid: wifiSsid ?? undefined,
+          bssid: resolvedBssid ?? undefined,
+          ssid: resolvedSsid ?? undefined,
         });
         if (proof.ok) {
           setWifiProofOk(true);
@@ -321,6 +370,36 @@ export const AttendanceScreen = () => {
         setWifiProofOk(false);
         setWifiProofError(getErrorMessage(error));
       }
+
+      let current: GeoPosition;
+      try {
+        current = await getCurrentLocation();
+        setLocationError(null);
+      } catch (error) {
+        setLocation(null);
+        setDistanceMeters(null);
+        setLocationError(getErrorMessage(error));
+        return;
+      }
+      setLocation(current);
+      const officeLat = toNumber(
+        configOffice?.lat ?? configOffice?.latitude ?? env.OFFICE_LAT
+      );
+      const officeLng = toNumber(
+        configOffice?.lng ?? configOffice?.longitude ?? env.OFFICE_LNG
+      );
+      if (officeLat == null || officeLng == null) {
+        setDistanceMeters(null);
+        setLocationError('Office location is not configured.');
+        return;
+      }
+      const distance = haversineDistanceMeters(
+        current.coords.latitude,
+        current.coords.longitude,
+        officeLat,
+        officeLng
+      );
+      setDistanceMeters(distance);
     } finally {
       setIsRefreshing(false);
     }
@@ -328,13 +407,33 @@ export const AttendanceScreen = () => {
 
   useEffect(() => {
     refreshStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (configQuery.data) {
       refreshStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configQuery.data]);
+
+  // Refresh permission status when app returns from background (e.g., after settings)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        refreshStatus();
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const createPayload = (): AttendancePayload | null => {
     if (!location || distanceMeters === null) {
@@ -362,7 +461,7 @@ export const AttendanceScreen = () => {
       return checkIn(payload);
     },
     onSuccess: () => showToast('success', 'Checked in successfully.'),
-    onError: (error) => showToast('error', getErrorMessage(error)),
+    onError: (error) => showErrorModal(getErrorMessage(error)),
   });
 
   const checkOutMutation = useMutation({
@@ -374,7 +473,7 @@ export const AttendanceScreen = () => {
       return checkOut(payload);
     },
     onSuccess: () => showToast('success', 'Checked out successfully.'),
-    onError: (error) => showToast('error', getErrorMessage(error)),
+    onError: (error) => showErrorModal(getErrorMessage(error)),
   });
 
   if (permissionStatus && permissionStatus !== RESULTS.GRANTED) {

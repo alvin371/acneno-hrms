@@ -71,7 +71,7 @@ export const PinUnlockScreen = () => {
       <View className="flex-1 justify-center gap-8">
         <View className="gap-2">
           <Text className="text-3xl font-black text-black text-left">
-            Unlock Acme HR
+            Unlock Acneno Life
           </Text>
           <Text className="text-base text-zinc-600 text-left">
             {canUseBiometry

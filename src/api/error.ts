@@ -3,6 +3,8 @@ import type { AxiosError } from 'axios';
 type ApiErrorBody = {
   message?: string | string[];
   errors?: Record<string, string[] | string>;
+  code?: string;
+  status?: string;
 };
 
 const defaultMessage = 'Something went wrong. Please try again.';
@@ -27,6 +29,46 @@ const humanizeClientMessage = (message?: string | null) => {
   return null;
 };
 
+const formatFieldLabel = (field: string) => {
+  const trimmed = field.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  return trimmed
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const collectFieldErrors = (errors?: Record<string, string[] | string>) => {
+  if (!errors) {
+    return [];
+  }
+
+  const details: string[] = [];
+
+  Object.entries(errors).forEach(([field, value]) => {
+    const label = formatFieldLabel(field);
+    const messages = Array.isArray(value)
+      ? value.filter(Boolean)
+      : typeof value === 'string' && value
+        ? [value]
+        : [];
+
+    if (messages.length === 0) {
+      return;
+    }
+
+    if (label) {
+      details.push(`${label}: ${messages.join(', ')}`);
+    } else {
+      details.push(...messages);
+    }
+  });
+
+  return details;
+};
+
 const extractMessage = (data?: ApiErrorBody | string | null) => {
   if (!data) {
     return null;
@@ -36,25 +78,18 @@ const extractMessage = (data?: ApiErrorBody | string | null) => {
     return data;
   }
 
+  const messageParts: string[] = [];
+
   if (Array.isArray(data.message)) {
-    return data.message.filter(Boolean).join(', ');
+    messageParts.push(...data.message.filter(Boolean));
+  } else if (typeof data.message === 'string' && data.message) {
+    messageParts.push(data.message);
   }
 
-  if (typeof data.message === 'string') {
-    return data.message;
-  }
+  messageParts.push(...collectFieldErrors(data.errors));
 
-  if (data.errors) {
-    const firstKey = Object.keys(data.errors)[0];
-    if (firstKey) {
-      const fieldErrors = data.errors[firstKey];
-      if (Array.isArray(fieldErrors)) {
-        return fieldErrors.filter(Boolean)[0] ?? null;
-      }
-      if (typeof fieldErrors === 'string') {
-        return fieldErrors;
-      }
-    }
+  if (messageParts.length > 0) {
+    return messageParts.join(' ');
   }
 
   return null;
@@ -84,8 +119,13 @@ export const getErrorMessage = (error: unknown) => {
     return 'We could not reach the server. Please check your connection and try again.';
   }
 
-  const status = error.response.status;
   const serverMessage = extractMessage(error.response.data);
+
+  if (serverMessage) {
+    return serverMessage;
+  }
+
+  const status = error.response.status;
 
   if (status === 401) {
     return 'Your session has expired. Please sign in again.';

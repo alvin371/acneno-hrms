@@ -13,9 +13,24 @@ export const MainTabs = () => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
       headerShown: false,
-      tabBarActiveTintColor: '#2454db',
+      tabBarActiveTintColor: '#b0243e',
       tabBarInactiveTintColor: '#94a3b8',
-      tabBarStyle: { borderTopColor: '#e2e8f0', paddingTop: 4 },
+      tabBarStyle: {
+        position: 'absolute',
+        left: 16,
+        right: 16,
+        bottom: 16,
+        height: 64,
+        paddingTop: 6,
+        borderTopColor: 'transparent',
+        backgroundColor: '#ffffff',
+        borderRadius: 28,
+        shadowColor: '#111111',
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 8,
+      },
       tabBarIcon: ({ color, size }) => {
         const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
           Home: 'home',

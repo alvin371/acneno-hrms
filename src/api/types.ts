@@ -3,6 +3,8 @@ export type User = {
   name: string;
   email: string;
   role?: string;
+  role_id?: number;
+  role_name?: string;
 };
 
 export type AuthTokens = {
@@ -30,7 +32,13 @@ export type AttendanceRecord = {
   office_name: string;
 };
 
-export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected';
+export type LeaveStatus =
+  | 'Pending'
+  | 'Approved'
+  | 'Rejected'
+  | 'PENDING_APPROVAL'
+  | 'CANCELLED'
+  | 'Cancelled';
 
 export type LeaveRecord = {
   id: number;
@@ -46,9 +54,78 @@ export type LeaveRecord = {
   attachmentPath?: string | null;
 };
 
-export type LeaveQuota = {
-  total: number;
-  remaining: number;
+export type LeaveApproval = {
+  id: number;
+  leaveRequestId: number;
+  stepNo: number;
+  approverId: number;
+  approverName: string;
+  approverEmail: string;
+  action: string;
+  actionAt: string | null;
+  notes: string | null;
+};
+
+export type LeaveDetail = {
+  id: number;
+  requestNo: string;
+  requester: User;
+  leaveTypeId: number;
+  leaveTypeName: string;
+  leaveTypeCode: string;
+  requiresAttachment: number;
+  maxDaysPerRequest: number;
+  startDate: string;
+  endDate: string;
+  daysCount: number;
+  reason: string;
+  status: LeaveStatus;
+  statusRaw: string;
+  currentStep: number;
+  attachmentPath?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  approvals: LeaveApproval[];
+};
+
+export type LeaveQuotaSummary = {
+  totalDays: number;
+  remainingDays: number;
+  usedDays: number;
+};
+
+export type LeaveQuotaItem = {
+  id: number;
+  leaveTypeId: number;
+  leaveTypeName: string;
+  leaveTypeCode: string;
+  totalDays: number;
+  remainingDays: number;
+  usedDays: number;
+  percentageRemaining: number;
+  status: string;
+  updatedAt: string;
+};
+
+export type LeaveQuotaResponse = {
+  summary: LeaveQuotaSummary;
+  quotas: LeaveQuotaItem[];
+};
+
+export type UploadResponse = {
+  type: string;
+  path: string;
+  filename: string;
+  originalName: string;
+  sizeBytes: number;
+};
+
+export type Holiday = {
+  id: number;
+  date: string;
+  name: string;
+  dayName: string;
+  isHoliday: boolean;
 };
 
 export type AttendanceRecap = {
@@ -117,14 +194,64 @@ export type Profile = {
   email: string;
   role?: string;
   phone_number?: string | null;
+  role_id?: number;
+  role_name?: string;
 };
 
-export type PerformanceRecord = {
-  id: string;
-  cycle: string;
-  achievements: string;
-  challenges: string;
-  selfScore: number;
-  notes?: string;
-  createdAt: string;
+export type PerformanceTemplateItem = {
+  id: number;
+  template_id: number;
+  order_no: number;
+  objective: string;
+  kpi: string | null;
+  target_value: number;
+  unit: string | null;
+  weight: number;
+};
+
+export type PerformanceTemplate = {
+  id: number;
+  name: string;
+  period_year: number;
+  department: string;
+  is_active: number;
+  role_id?: number;
+  role_display_name?: string | null;
+  employee_role_id?: number | null;
+  employee_role_name?: string | null;
+  items: PerformanceTemplateItem[];
+};
+
+export type PerformanceSubmissionStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
+export type PerformanceSubmission = {
+  id: number;
+  template_id: number;
+  employee_id: number;
+  period_year: number;
+  total_score: number;
+  status: PerformanceSubmissionStatus;
+  template_name: string;
+};
+
+export type PerformanceSubmissionItem = {
+  id: number;
+  template_item_id: number;
+  objective: string;
+  target_value: number;
+  actual_value: number;
+  weight: number;
+  score_ratio: number;
+  final_score: number;
+};
+
+export type PerformanceSubmissionDetail = {
+  id: number;
+  template_id: number;
+  employee_id: number;
+  template_name: string;
+  period_year: number;
+  total_score: number;
+  status: PerformanceSubmissionStatus;
+  items: PerformanceSubmissionItem[];
 };

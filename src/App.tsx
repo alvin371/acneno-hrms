@@ -7,11 +7,8 @@ import Toast from 'react-native-toast-message';
 import NetInfo from '@react-native-community/netinfo';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { queryClient } from '@/lib/queryClient';
-import {
-  initNotifications,
-  scheduleDailyCheckInOutNotifications,
-} from './lib/notifications';
 import { useAuthStore } from '@/store/authStore';
+import { ErrorModal } from '@/ui/ErrorModal';
 
 const App = () => {
   const bootstrap = useAuthStore((state) => state.bootstrap);
@@ -19,8 +16,6 @@ const App = () => {
   useEffect(() => {
     NetInfo.configure({ shouldFetchWiFiSSID: true });
     bootstrap();
-    initNotifications();
-    scheduleDailyCheckInOutNotifications().catch(() => undefined);
   }, [bootstrap]);
 
   return (
@@ -29,6 +24,7 @@ const App = () => {
         <QueryClientProvider client={queryClient}>
           <StatusBar barStyle="dark-content" />
           <RootNavigator />
+          <ErrorModal />
           <Toast />
         </QueryClientProvider>
       </SafeAreaProvider>

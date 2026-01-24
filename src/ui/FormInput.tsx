@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { Control, Controller, FieldValues, Path } from 'react-hook-form';
 import { InputField } from './InputField';
 
@@ -8,11 +9,16 @@ type FormInputProps<T extends FieldValues> = {
   placeholder?: string;
   secureTextEntry?: boolean;
   keyboardType?: 'default' | 'email-address' | 'numeric';
+  placeholderTextColor?: string;
   multiline?: boolean;
   containerClassName?: string;
   labelClassName?: string;
   inputClassName?: string;
   errorClassName?: string;
+  containerStyle?: ComponentProps<typeof InputField>['containerStyle'];
+  labelStyle?: ComponentProps<typeof InputField>['labelStyle'];
+  inputStyle?: ComponentProps<typeof InputField>['inputStyle'];
+  errorStyle?: ComponentProps<typeof InputField>['errorStyle'];
 };
 
 export const FormInput = <T extends FieldValues>({
@@ -22,11 +28,16 @@ export const FormInput = <T extends FieldValues>({
   placeholder,
   secureTextEntry,
   keyboardType,
+  placeholderTextColor,
   multiline,
   containerClassName,
   labelClassName,
   inputClassName,
   errorClassName,
+  containerStyle,
+  labelStyle,
+  inputStyle,
+  errorStyle,
 }: FormInputProps<T>) => (
   <Controller
     control={control}
@@ -39,12 +50,17 @@ export const FormInput = <T extends FieldValues>({
         onChangeText={onChange}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
+        placeholderTextColor={placeholderTextColor}
         multiline={multiline}
         error={error?.message}
         containerClassName={containerClassName}
         labelClassName={labelClassName}
         inputClassName={inputClassName}
         errorClassName={errorClassName}
+        containerStyle={containerStyle}
+        labelStyle={labelStyle}
+        inputStyle={inputStyle}
+        errorStyle={errorStyle}
       />
     )}
   />

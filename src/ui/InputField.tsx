@@ -1,4 +1,5 @@
 import { Text, TextInput, View } from 'react-native';
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { cn } from '@/utils/cn';
 
 type InputProps = {
@@ -8,12 +9,17 @@ type InputProps = {
   onChangeText?: (text: string) => void;
   secureTextEntry?: boolean;
   keyboardType?: 'default' | 'email-address' | 'numeric';
+  placeholderTextColor?: string;
   error?: string;
   multiline?: boolean;
   containerClassName?: string;
   labelClassName?: string;
   inputClassName?: string;
   errorClassName?: string;
+  containerStyle?: StyleProp<ViewStyle>;
+  labelStyle?: StyleProp<TextStyle>;
+  inputStyle?: StyleProp<TextStyle>;
+  errorStyle?: StyleProp<TextStyle>;
 };
 
 export const InputField = ({
@@ -23,15 +29,23 @@ export const InputField = ({
   onChangeText,
   secureTextEntry,
   keyboardType = 'default',
+  placeholderTextColor,
   error,
   multiline,
   containerClassName,
   labelClassName,
   inputClassName,
   errorClassName,
+  containerStyle,
+  labelStyle,
+  inputStyle,
+  errorStyle,
 }: InputProps) => (
-  <View className={cn('gap-2', containerClassName)}>
-    <Text className={cn('text-sm font-medium text-ink-600', labelClassName)}>
+  <View className={cn('gap-2', containerClassName)} style={containerStyle}>
+    <Text
+      className={cn('text-sm font-medium text-ink-600', labelClassName)}
+      style={labelStyle}
+    >
       {label}
     </Text>
     <TextInput
@@ -40,7 +54,9 @@ export const InputField = ({
         multiline && 'min-h-[96px]',
         inputClassName
       )}
+      style={inputStyle}
       placeholder={placeholder}
+      placeholderTextColor={placeholderTextColor}
       value={value}
       onChangeText={onChangeText}
       secureTextEntry={secureTextEntry}
@@ -49,7 +65,10 @@ export const InputField = ({
       textAlignVertical={multiline ? 'top' : 'center'}
     />
     {error ? (
-      <Text className={cn('text-xs text-red-600', errorClassName)}>
+      <Text
+        className={cn('text-xs text-red-600', errorClassName)}
+        style={errorStyle}
+      >
         {error}
       </Text>
     ) : null}

@@ -18,9 +18,11 @@ export type ProfileStackParamList = {
 export type LeaveStackParamList = {
   LeaveList: undefined;
   LeaveCreate: undefined;
+  LeaveDetail: { id: number };
 };
 
 export type PerformanceStackParamList = {
   PerformanceList: undefined;
   PerformanceCreate: undefined;
+  PerformanceDetail: { id: number };
 };
