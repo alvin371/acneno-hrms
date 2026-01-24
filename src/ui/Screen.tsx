@@ -1,6 +1,5 @@
 import { ReactNode } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
-import type { StyleProp, ViewStyle } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { tokens } from '@/config/tokens';
 import { cn } from '@/utils/cn';
@@ -9,45 +8,24 @@ type ScreenProps = {
   children: ReactNode;
   scroll?: boolean;
   className?: string;
-  refreshing?: boolean;
-  onRefresh?: () => void;
-  safeAreaClassName?: string;
-  safeAreaStyle?: StyleProp<ViewStyle>;
-  contentContainerStyle?: StyleProp<ViewStyle>;
+  bottomInset?: number;
 };
 
 export const Screen = ({
   children,
   scroll,
   className,
-  refreshing,
-  onRefresh,
-  safeAreaClassName,
-  safeAreaStyle,
-  contentContainerStyle,
+  bottomInset = 96,
 }: ScreenProps) => {
   if (scroll) {
     return (
-      <SafeAreaView
-        className={cn('flex-1 bg-slate-50', safeAreaClassName)}
-        style={safeAreaStyle}
-      >
+      <SafeAreaView className="flex-1 bg-slate-50">
         <ScrollView
-          contentContainerStyle={[
-            { padding: tokens.spacing.page },
-            contentContainerStyle,
-          ]}
+          contentContainerStyle={{
+            padding: tokens.spacing.page,
+            paddingBottom: tokens.spacing.page + bottomInset,
+          }}
           className={cn('flex-1', className)}
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl
-                refreshing={refreshing ?? false}
-                onRefresh={onRefresh}
-                colors={['#2454db']}
-                tintColor="#2454db"
-              />
-            ) : undefined
-          }
         >
           {children}
         </ScrollView>

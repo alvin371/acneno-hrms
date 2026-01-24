@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Acneno Life</string>
+	<string>Acneno App</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -28,21 +28,16 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
+	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We use your location to validate attendance within the office radius.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Face ID to unlock your workspace.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>We use your location to validate attendance within the office radius and verify office Wi-Fi connection.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>We use your location to validate attendance within the office radius and verify office Wi-Fi connection.</string>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>We need to verify you are connected to the office Wi-Fi network for attendance tracking.</string>
-	<key>RCTNewArchEnabled</key>
-	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

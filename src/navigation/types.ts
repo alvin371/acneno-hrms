@@ -10,6 +10,11 @@ export type MainTabsParamList = {
   Profile: undefined;
 };
 
+export type AttendanceStackParamList = {
+  AttendanceMain: undefined;
+  AttendanceMonthlyDetail: undefined;
+};
+
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   ProfileEdit: undefined;

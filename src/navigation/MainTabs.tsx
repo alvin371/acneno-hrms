@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { HomeScreen } from '@/features/home/screens/HomeScreen';
-import { AttendanceScreen } from '@/features/attendance/screens/AttendanceScreen';
+import { AttendanceStack } from '@/navigation/stacks/AttendanceStack';
 import { ProfileStack } from '@/navigation/stacks/ProfileStack';
 import { LeaveStack } from '@/navigation/stacks/LeaveStack';
 import { PerformanceStack } from '@/navigation/stacks/PerformanceStack';
@@ -11,25 +11,21 @@ const Tab = createBottomTabNavigator<MainTabsParamList>();
 
 export const MainTabs = () => (
   <Tab.Navigator
+    id="MainTabs"
     screenOptions={({ route }) => ({
       headerShown: false,
-      tabBarActiveTintColor: '#b0243e',
+      tabBarActiveTintColor: '#2454db',
       tabBarInactiveTintColor: '#94a3b8',
       tabBarStyle: {
-        position: 'absolute',
-        left: 16,
-        right: 16,
-        bottom: 16,
+        borderTopColor: '#e2e8f0',
+        paddingTop: 4,
+        paddingBottom: 10,
         height: 64,
-        paddingTop: 6,
-        borderTopColor: 'transparent',
-        backgroundColor: '#ffffff',
-        borderRadius: 28,
-        shadowColor: '#111111',
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 8,
+        position: 'absolute',
+        left: 12,
+        right: 12,
+        bottom: 12,
+        borderRadius: 12,
       },
       tabBarIcon: ({ color, size }) => {
         const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -45,7 +41,7 @@ export const MainTabs = () => (
     })}
   >
     <Tab.Screen name="Home" component={HomeScreen} />
-    <Tab.Screen name="Attendance" component={AttendanceScreen} />
+    <Tab.Screen name="Attendance" component={AttendanceStack} />
     <Tab.Screen name="Leave" component={LeaveStack} />
     <Tab.Screen name="Performance" component={PerformanceStack} />
     <Tab.Screen name="Profile" component={ProfileStack} />

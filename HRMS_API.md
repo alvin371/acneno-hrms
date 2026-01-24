@@ -339,6 +339,28 @@ Response 200:
 }
 ```
 
+## Holidays
+
+### GET /holidays
+Query (optional):
+- `start=YYYY-MM-DD`
+- `end=YYYY-MM-DD`
+
+Response 200:
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "date": "2026-01-01",
+      "name": "New Year's Day",
+      "dayName": "Thursday",
+      "isHoliday": true
+    }
+  ]
+}
+```
+
 ## Leave
 
 ### GET /leave
@@ -388,17 +410,126 @@ Response 201:
   "status": "Pending"
 }
 ```
-Notes:
-- Leave requests require an active approval route for the user. If none is configured, the API returns `422` with `message: "No approval route configured for this user."`
 
 ### GET /leave/quota
+Get all leave quotas for the authenticated user with summary.
+
 Response 200:
 ```json
 {
-  "total": 12,
-  "remaining": 9
+  "summary": {
+    "totalDays": 27,
+    "remainingDays": 22,
+    "usedDays": 5
+  },
+  "quotas": [
+    {
+      "id": 1,
+      "leaveTypeId": 1,
+      "leaveTypeName": "Annual Leave",
+      "leaveTypeCode": "ANNUAL",
+      "totalDays": 12,
+      "remainingDays": 9,
+      "usedDays": 3,
+      "percentageRemaining": 75.0,
+      "status": "healthy",
+      "updatedAt": "2026-01-09 10:30:00"
+    },
+    {
+      "id": 2,
+      "leaveTypeId": 2,
+      "leaveTypeName": "Sick Leave",
+      "leaveTypeCode": "SICK",
+      "totalDays": 10,
+      "remainingDays": 10,
+      "usedDays": 0,
+      "percentageRemaining": 100.0,
+      "status": "healthy",
+      "updatedAt": "2026-01-09 10:30:00"
+    },
+    {
+      "id": 3,
+      "leaveTypeId": 3,
+      "leaveTypeName": "Personal Leave",
+      "leaveTypeCode": "PERSONAL",
+      "totalDays": 5,
+      "remainingDays": 3,
+      "usedDays": 2,
+      "percentageRemaining": 60.0,
+      "status": "healthy",
+      "updatedAt": "2026-01-09 10:30:00"
+    }
+  ]
 }
 ```
+
+**Status values:**
+- `healthy`: > 50% remaining (green status)
+- `low`: 20-50% remaining (yellow status)
+- `critical`: < 20% remaining (red status)
+
+### GET /leave/quota/detail
+Get detailed quota information for a specific leave type including usage history.
+
+Query Parameters (required):
+- `leave_type_id`: ID of the leave type
+
+Example: `/api/hrms/leave/quota/detail?leave_type_id=1`
+
+Response 200:
+```json
+{
+  "quota": {
+    "id": 1,
+    "leaveTypeId": 1,
+    "leaveTypeName": "Annual Leave",
+    "leaveTypeCode": "ANNUAL",
+    "totalDays": 12,
+    "remainingDays": 9,
+    "usedDays": 3,
+    "percentageRemaining": 75.0,
+    "updatedAt": "2026-01-09 10:30:00"
+  },
+  "usageHistory": [
+    {
+      "requestNo": "LV-20260109-1915",
+      "startDate": "2026-01-15",
+      "endDate": "2026-01-17",
+      "daysCount": 3,
+      "status": "Approved",
+      "createdAt": "2026-01-09 07:31:18"
+    },
+    {
+      "requestNo": "LV-20260105-1234",
+      "startDate": "2026-01-05",
+      "endDate": "2026-01-05",
+      "daysCount": 1,
+      "status": "Pending",
+      "createdAt": "2026-01-04 15:20:00"
+    }
+  ]
+}
+```
+
+Response 404:
+```json
+{
+  "message": "Quota not found for this leave type."
+}
+```
+
+Response 400:
+```json
+{
+  "message": "leave_type_id is required."
+}
+```
+
+**Notes:**
+- Both quota endpoints require authentication (Bearer token)
+- Only users with attendance enabled can access quota information
+- Usage history shows APPROVED and PENDING_APPROVAL requests only
+- Status is calculated automatically based on percentage remaining
 
 ## Error Format
 
