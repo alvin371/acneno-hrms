@@ -6,7 +6,7 @@ import type { ProfileStackParamList } from '@/navigation/types';
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
 export const ProfileStack = () => (
-  <Stack.Navigator>
+  <Stack.Navigator id="ProfileStack">
     <Stack.Screen
       name="ProfileMain"
       component={ProfileScreen}

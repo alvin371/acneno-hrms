@@ -7,7 +7,7 @@ import type { LeaveStackParamList } from '@/navigation/types';
 const Stack = createNativeStackNavigator<LeaveStackParamList>();
 
 export const LeaveStack = () => (
-  <Stack.Navigator>
+  <Stack.Navigator id="LeaveStack">
     <Stack.Screen
       name="LeaveList"
       component={LeaveListScreen}

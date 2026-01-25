@@ -24,9 +24,14 @@ import { getConfig } from '@/features/config/api';
 import {
   checkIn,
   checkOut,
+  getAttendanceHistory,
   requestOfficeProof,
   type AttendancePayload,
 } from '@/features/attendance/api';
+import type { AttendanceRecord } from '@/api/types';
+import { parseServerDateTime } from '@/features/attendance/utils';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { AttendanceStackParamList } from '@/navigation/types';
 
 const requestLocationPermission = async () => {
   const permission = Platform.select({
@@ -135,7 +140,18 @@ const isPlaceholderBssid = (value?: string | null) => {
   return normalized === '02:00:00:00:00' || normalized === '02:00:00:00:00:00';
 };
 
-export const AttendanceScreen = () => {
+const isSameDay = (left: Date, right: Date) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+
+type Props = NativeStackScreenProps<
+  AttendanceStackParamList,
+  'AttendanceMain'
+>;
+
+export const AttendanceScreen = ({ navigation }: Props) => {
+  const queryClient = useQueryClient();
   const [now, setNow] = useState(new Date());
   const [permissionStatus, setPermissionStatus] = useState<string>();
   const [location, setLocation] = useState<GeoPosition | null>(null);
@@ -168,6 +184,13 @@ export const AttendanceScreen = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (attendanceHistoryQuery.error) {
+      showToast('error', getErrorMessage(attendanceHistoryQuery.error));
+    }
+  }, [attendanceHistoryQuery.error]);
+
+
   const isWithinRadius = useMemo(() => {
     if (distanceMeters === null) {
       return false;
@@ -188,7 +211,7 @@ export const AttendanceScreen = () => {
 
   const canCheck = wifiProofOk === true && !!location;
 
-  const refreshStatus = async () => {
+  const refreshStatus = useCallback(async () => {
     setIsRefreshing(true);
     setWifiProofOk(null);
     setWifiProofError(null);
@@ -251,51 +274,98 @@ export const AttendanceScreen = () => {
         | Record<string, unknown>
         | undefined;
 
-      const configWifi = configQuery.data?.wifi as
-        | Record<string, unknown>
-        | undefined;
-      const rawAllowedSsids = coerceStringList(
-        configWifi?.allowed_ssids ??
-          configWifi?.ssids ??
-          configOffice?.allowed_ssids ??
-          configOffice?.wifi_ssids ??
-          configOffice?.wifi_ssid
-      );
-      const rawAllowedBssids = coerceStringList(
-        configWifi?.allowed_bssids ??
-          configWifi?.bssids ??
-          configOffice?.allowed_bssids ??
-          configOffice?.wifi_bssids ??
-          configOffice?.wifi_bssid
-      );
-      const allowedSsids = rawAllowedSsids
-        .map((ssid) => normalizeSsid(ssid))
-        .filter(Boolean);
-      const allowedBssids = rawAllowedBssids
-        .map((bssid) => normalizeBssid(bssid))
-        .filter(Boolean);
+          // Step 2: Try to get location (but don't fail Wi-Fi validation if this fails)
+          let current: Geolocation.GeoPosition | null = null;
+          if (status === RESULTS.GRANTED) {
+            try {
+              current = await getCurrentLocation();
+              setLocation(current);
+              setLocationError(null);
+            } catch (error) {
+              setLocation(null);
+              setDistanceMeters(null);
+              setLocationError(getErrorMessage(error));
+              // Don't return - Wi-Fi validation can still proceed
+            }
+          } else {
+            setLocation(null);
+            setDistanceMeters(null);
+            setLocationError('Location permission not granted.');
+          }
 
-      if (allowedSsids.length === 0) {
-        allowedSsids.push(
-          ...coerceStringList(env.OFFICE_WIFI_SSID)
+          // Step 3: Calculate distance if we have location
+          if (current) {
+            const configOffice = configQuery.data?.office as
+              | Record<string, unknown>
+              | undefined;
+            const officeLat = toNumber(
+              configOffice?.lat ?? configOffice?.latitude ?? env.OFFICE_LAT
+            );
+            const officeLng = toNumber(
+              configOffice?.lng ?? configOffice?.longitude ?? env.OFFICE_LNG
+            );
+
+            if (officeLat != null && officeLng != null) {
+              try {
+                const distance = haversineDistanceMeters(
+                  current.coords.latitude,
+                  current.coords.longitude,
+                  officeLat,
+                  officeLng
+                );
+
+                // Ensure distance is a valid number
+                if (typeof distance === 'number' && Number.isFinite(distance)) {
+                  setDistanceMeters(distance);
+                } else {
+                  setDistanceMeters(null);
+                  setLocationError('Unable to calculate distance to office.');
+                }
+              } catch (error) {
+                setDistanceMeters(null);
+                setLocationError('Unable to calculate distance to office.');
+              }
+            } else {
+              setDistanceMeters(null);
+            }
+          }
+
+          // Step 4: INDEPENDENT Wi-Fi validation (works regardless of location status)
+          const configOffice = configQuery.data?.office as
+            | Record<string, unknown>
+            | undefined;
+          const configWifi = configQuery.data?.wifi as
+            | Record<string, unknown>
+            | undefined;
+
+          const rawAllowedSsids = coerceStringList(
+            configWifi?.allowed_ssids ??
+              configWifi?.ssids ??
+              configOffice?.allowed_ssids ??
+              configOffice?.wifi_ssids ??
+              configOffice?.wifi_ssid
+          );
+          const rawAllowedBssids = coerceStringList(
+            configWifi?.allowed_bssids ??
+              configWifi?.bssids ??
+              configOffice?.allowed_bssids ??
+              configOffice?.wifi_bssids ??
+              configOffice?.wifi_bssid
+          );
+          const allowedSsids = rawAllowedSsids
             .map((ssid) => normalizeSsid(ssid))
-            .filter(Boolean)
-        );
-      }
-
-      if (allowedBssids.length === 0) {
-        allowedBssids.push(
-          ...coerceStringList(env.OFFICE_WIFI_BSSID)
+            .filter(Boolean);
+          const allowedBssids = rawAllowedBssids
             .map((bssid) => normalizeBssid(bssid))
-            .filter(Boolean)
-        );
-      }
+            .filter(Boolean);
 
-      if (allowedSsids.length === 0 && allowedBssids.length === 0) {
-        setWifiProofOk(false);
-        setWifiProofError('Office Wi-Fi is not configured.');
-        return;
-      }
+          if (allowedSsids.length === 0) {
+            allowedSsids.push(
+              ...coerceStringList(env.OFFICE_WIFI_SSID)
+                .map((ssid) => normalizeSsid(ssid))
+                .filter(Boolean)
+            );
+          }
 
       if (latestNetInfo.type !== 'wifi') {
         setWifiProofOk(false);
@@ -368,7 +438,10 @@ export const AttendanceScreen = () => {
         }
       } catch (error) {
         setWifiProofOk(false);
-        setWifiProofError(getErrorMessage(error));
+        setWifiProofError('Validation timeout. Please try again.');
+      } else {
+        setWifiProofOk(false);
+        setWifiProofError('Validation failed. Please try again.');
       }
 
       let current: GeoPosition;
@@ -402,8 +475,9 @@ export const AttendanceScreen = () => {
       setDistanceMeters(distance);
     } finally {
       setIsRefreshing(false);
+      setIsValidating(false);
     }
-  };
+  }, [configQuery.data, netInfo.type, wifiSsid, wifiBssid]);
 
   useEffect(() => {
     refreshStatus();
@@ -436,20 +510,35 @@ export const AttendanceScreen = () => {
   }, []);
 
   const createPayload = (): AttendancePayload | null => {
-    if (!location || distanceMeters === null) {
-      return null;
+    // If location is available, use full validation
+    if (location && distanceMeters !== null) {
+      return {
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+        gpsAccuracy: location.coords.accuracy ?? 0,
+        distanceMeters,
+        wifiProof: {
+          bssid: wifiBssid ?? undefined,
+          ssid: wifiSsid ?? undefined,
+        },
+      };
     }
 
-    return {
-      lat: location.coords.latitude,
-      lng: location.coords.longitude,
-      gpsAccuracy: location.coords.accuracy ?? 0,
-      distanceMeters,
-      wifiProof: {
-        bssid: wifiBssid ?? undefined,
-        ssid: wifiSsid ?? undefined,
-      },
-    };
+    // Fallback: If location failed but Wi-Fi is verified, use Wi-Fi-only validation
+    if (locationError && wifiProofOk === true) {
+      return {
+        lat: 0, // Placeholder when location unavailable
+        lng: 0, // Placeholder when location unavailable
+        gpsAccuracy: 0,
+        distanceMeters: 0,
+        wifiProof: {
+          bssid: wifiBssid ?? undefined,
+          ssid: wifiSsid ?? undefined,
+        },
+      };
+    }
+
+    return null;
   };
 
   const checkInMutation = useMutation({
@@ -475,6 +564,48 @@ export const AttendanceScreen = () => {
     onSuccess: () => showToast('success', 'Checked out successfully.'),
     onError: (error) => showErrorModal(getErrorMessage(error)),
   });
+
+  const weeklyRecords = useMemo(() => {
+    if (!attendanceHistoryQuery.data) {
+      return [];
+    }
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - 6);
+    weekStart.setHours(0, 0, 0, 0);
+    return attendanceHistoryQuery.data
+      .map((record) => ({
+        record,
+        parsedDate: parseServerDateTime(record.created_at),
+      }))
+      .filter(
+        (entry): entry is { record: AttendanceRecord; parsedDate: Date } =>
+          !!entry.parsedDate && entry.parsedDate >= weekStart
+      )
+      .sort((a, b) => b.parsedDate.getTime() - a.parsedDate.getTime())
+      .map((entry) => entry.record);
+  }, [attendanceHistoryQuery.data, now]);
+
+  const todaySummary = useMemo(() => {
+    if (!attendanceHistoryQuery.data) {
+      return { hasCheckIn: false, hasCheckOut: false };
+    }
+    const today = new Date();
+    return attendanceHistoryQuery.data.reduce(
+      (acc, record) => {
+        const parsed = parseServerDateTime(record.created_at);
+        if (parsed && isSameDay(parsed, today)) {
+          if (record.type === 'IN') {
+            acc.hasCheckIn = true;
+          }
+          if (record.type === 'OUT') {
+            acc.hasCheckOut = true;
+          }
+        }
+        return acc;
+      },
+      { hasCheckIn: false, hasCheckOut: false }
+    );
+  }, [attendanceHistoryQuery.data]);
 
   if (permissionStatus && permissionStatus !== RESULTS.GRANTED) {
     return (
@@ -515,11 +646,25 @@ export const AttendanceScreen = () => {
           </View>
           <View className="flex-row items-center justify-between">
             <Text className="text-base font-semibold text-ink-700">Status</Text>
-            <Text className={isWithinRadius ? 'text-emerald-600' : 'text-rose-600'}>
-              {isWithinRadius ? 'Inside office radius' : 'Outside office radius'}
+            <Text className={isWithinRadius ? 'text-emerald-600' : locationError && wifiProofOk ? 'text-amber-600' : 'text-rose-600'}>
+              {isWithinRadius
+                ? 'Inside office radius'
+                : locationError && wifiProofOk
+                ? 'Wi-Fi verified (Location unavailable)'
+                : 'Outside office radius'}
             </Text>
           </View>
         </Card>
+        {locationError && wifiProofOk && (
+          <Card className="gap-2 bg-amber-50 border-amber-200">
+            <Text className="text-sm font-semibold text-amber-800">
+              Using Wi-Fi-only validation
+            </Text>
+            <Text className="text-xs text-amber-700">
+              Location services are unavailable, but you can still check in using Wi-Fi verification.
+            </Text>
+          </Card>
+        )}
         <Card className="gap-3">
           <Text className="text-base font-semibold text-ink-700">Validation</Text>
           <View className="gap-2">
@@ -538,7 +683,9 @@ export const AttendanceScreen = () => {
                 ? locationError
                 : distanceMeters === null
                 ? 'Checking location...'
-                : `${Math.round(distanceMeters)}m from office`}
+                : typeof distanceMeters === 'number' && Number.isFinite(distanceMeters)
+                ? `${Math.round(distanceMeters)}m from office`
+                : 'Unable to calculate distance'}
             </Text>
             <Text className="text-sm text-ink-500">
               Office Wi-Fi proof:{' '}
@@ -559,18 +706,146 @@ export const AttendanceScreen = () => {
         <View className="gap-3">
           <Button
             label="Check In"
-            onPress={() => checkInMutation.mutate()}
-            disabled={!canCheck}
+            onPress={() => setShowCheckInModal(true)}
+            disabled={!canCheck || todaySummary.hasCheckIn}
             loading={checkInMutation.isPending}
           />
           <Button
             label="Check Out"
-            onPress={() => checkOutMutation.mutate()}
-            disabled={!canCheck}
+            onPress={() => setShowCheckOutModal(true)}
+            disabled={!canCheck || todaySummary.hasCheckOut}
             loading={checkOutMutation.isPending}
             variant="secondary"
           />
         </View>
+
+        <Card className="gap-3">
+          <Text className="text-base font-semibold text-ink-700">This week</Text>
+          {attendanceHistoryQuery.isLoading ? (
+            <Text className="text-sm text-ink-500">
+              Loading attendance history...
+            </Text>
+          ) : weeklyRecords.length > 0 ? (
+            <View className="gap-3">
+              {weeklyRecords.map((record) => {
+                const parsed = parseServerDateTime(record.created_at);
+                return (
+                  <View
+                    key={record.id}
+                    className="flex-row items-center justify-between"
+                  >
+                    <View>
+                      <Text className="text-sm font-semibold text-ink-700">
+                        {record.type === 'IN' ? 'Check In' : 'Check Out'}
+                      </Text>
+                      <Text className="text-xs text-ink-500">
+                        {parsed
+                          ? parsed.toLocaleString([], {
+                              month: 'short',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : record.created_at}
+                      </Text>
+                    </View>
+                    <Text className="text-xs text-ink-500">
+                      {record.office_name}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <Text className="text-sm text-ink-500">
+              No check-in or check-out records this week.
+            </Text>
+          )}
+        </Card>
+
+        <Card className="gap-3">
+          <Text className="text-base font-semibold text-ink-700">
+            Monthly detail
+          </Text>
+          <Text className="text-sm text-ink-500">
+            View full monthly report and download it.
+          </Text>
+          <Button
+            label="Open monthly detail"
+            variant="secondary"
+            onPress={() => navigation.navigate('AttendanceMonthlyDetail')}
+          />
+        </Card>
+
+        <Modal
+          transparent
+          visible={showCheckInModal}
+          animationType="fade"
+          onRequestClose={() => setShowCheckInModal(false)}
+        >
+          <View className="flex-1 bg-black/50 items-center justify-center p-4">
+            <View className="bg-white rounded-lg p-6 w-full max-w-sm gap-4">
+              <Text className="text-xl font-bold text-ink-700">
+                Confirm Check In
+              </Text>
+              <Text className="text-base text-ink-600">
+                Are you sure you want to check in now?
+              </Text>
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <Button
+                    label="Cancel"
+                    variant="secondary"
+                    onPress={() => setShowCheckInModal(false)}
+                    disabled={checkInMutation.isPending}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Button
+                    label="Confirm"
+                    onPress={() => checkInMutation.mutate()}
+                    loading={checkInMutation.isPending}
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          transparent
+          visible={showCheckOutModal}
+          animationType="fade"
+          onRequestClose={() => setShowCheckOutModal(false)}
+        >
+          <View className="flex-1 bg-black/50 items-center justify-center p-4">
+            <View className="bg-white rounded-lg p-6 w-full max-w-sm gap-4">
+              <Text className="text-xl font-bold text-ink-700">
+                Confirm Check Out
+              </Text>
+              <Text className="text-base text-ink-600">
+                Are you sure you want to check out now?
+              </Text>
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <Button
+                    label="Cancel"
+                    variant="secondary"
+                    onPress={() => setShowCheckOutModal(false)}
+                    disabled={checkOutMutation.isPending}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Button
+                    label="Confirm"
+                    onPress={() => checkOutMutation.mutate()}
+                    loading={checkOutMutation.isPending}
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </Screen>
   );

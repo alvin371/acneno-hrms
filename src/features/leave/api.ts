@@ -30,6 +30,16 @@ export const getLeaveQuota = async () => {
   return response.data;
 };
 
+export const getHolidays = async (start?: string, end?: string) => {
+  const response = await apiClient.get<{ data: Holiday[] }>(
+    '/holidays',
+    {
+      params: start && end ? { start, end } : undefined,
+    }
+  );
+  return response.data.data;
+};
+
 export const createLeave = async (payload: LeavePayload) => {
   const response = await apiClient.post('/leave', {
     leave_type_id: payload.leaveTypeId,
