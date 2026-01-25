@@ -1,43 +1,68 @@
+import { useEffect } from 'react';
 import { Text, View } from 'react-native';
-import { useEffect, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Screen } from '@/ui/Screen';
 import { Button } from '@/ui/Button';
-import { FormInput } from '@/ui/FormInput';
 import { Card } from '@/ui/Card';
-import { LoadingSkeleton } from '@/ui/LoadingSkeleton';
+import { FormInput } from '@/ui/FormInput';
 import { EmptyState } from '@/ui/EmptyState';
+import { LoadingSkeleton } from '@/ui/LoadingSkeleton';
+import { ScoreBadge } from '@/ui/ScoreBadge';
+import { createPerformanceSubmission, getActiveTemplate } from '@/features/performance/api';
 import {
-  createPerformanceSubmission,
-  getActiveTemplate,
-} from '@/features/performance/api';
+  calculateScorePreview,
+  calculateTotalScore,
+  formatScore,
+} from '@/features/performance/utils';
 import { showToast } from '@/utils/toast';
-import { showErrorModal } from '@/utils/errorModal';
 import { getErrorMessage } from '@/api/error';
 import { queryClient } from '@/lib/queryClient';
 import type { PerformanceStackParamList } from '@/navigation/types';
+import type { PerformanceTemplateItem } from '@/api/types';
 
-const schema = z.object({
-  items: z
-    .array(
-      z.object({
-        template_item_id: z.coerce.number(),
-        actual_value: z.coerce.number().min(0, 'Actual value must be 0 or more'),
-      })
-    )
-    .min(1, 'No appraisal items available'),
+const formSchema = z.object({
+  items: z.array(
+    z.object({
+      templateItemId: z.union([z.number(), z.string()]),
+      actualValue: z.string().min(1, 'Value is required'),
+    })
+  ),
 });
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<typeof formSchema>;
 
-type Props = NativeStackScreenProps<
-  PerformanceStackParamList,
-  'PerformanceCreate'
->;
+type Props = NativeStackScreenProps<PerformanceStackParamList, 'PerformanceCreate'>;
+
+const ItemScorePreview = ({
+  actualValue,
+  templateItem,
+}: {
+  actualValue: number | string;
+  templateItem: PerformanceTemplateItem;
+}) => {
+  const numericValue =
+    typeof actualValue === 'string' ? parseFloat(actualValue) || 0 : actualValue || 0;
+  const { scoreRatio, finalScore } = calculateScorePreview(
+    numericValue,
+    templateItem.target_value,
+    templateItem.weight
+  );
+
+  return (
+    <View className="mt-2 flex-row items-center justify-between rounded-lg bg-slate-50 p-2">
+      <Text className="text-xs text-ink-500">
+        Score: {formatScore(scoreRatio * 100)}% of weight
+      </Text>
+      <Text className="text-sm font-semibold text-ink-700">
+        +{formatScore(finalScore)} pts
+      </Text>
+    </View>
+  );
+};
 
 export const PerformanceCreateScreen = ({ navigation }: Props) => {
   const currentYear = new Date().getFullYear();
@@ -46,161 +71,227 @@ export const PerformanceCreateScreen = ({ navigation }: Props) => {
     data: template,
     isLoading,
     error,
-    refetch,
-    isRefetching,
   } = useQuery({
     queryKey: ['performance-template', currentYear],
     queryFn: () => getActiveTemplate(currentYear),
   });
 
-  const sortedItems = useMemo(() => {
-    if (!template?.items) return [];
-    return [...template.items].sort((a, b) => a.order_no - b.order_no);
-  }, [template?.items]);
-
   const { control, handleSubmit, reset } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       items: [],
     },
   });
 
+  useFieldArray({
+    control,
+    name: 'items',
+  });
+
+  // Watch all items for total score calculation
+  const watchedItems = useWatch({ control, name: 'items' });
+
+  // Initialize form when template loads
   useEffect(() => {
-    if (sortedItems.length > 0) {
+    if (template && template.items.length > 0) {
       reset({
-        items: sortedItems.map((item) => ({
-          template_item_id: Number(item.id),
-          actual_value: 0,
+        items: template.items.map((item) => ({
+          templateItemId: item.id,
+          actualValue: '0',
         })),
       });
     }
-  }, [sortedItems, reset]);
-
-  useEffect(() => {
-    if (error) {
-      showErrorModal(getErrorMessage(error));
-    }
-  }, [error]);
+  }, [template, reset]);
 
   const mutation = useMutation({
     mutationFn: createPerformanceSubmission,
     onSuccess: () => {
-      showToast('success', 'Performance appraisal submitted.');
+      showToast('success', 'Performance submission created successfully.');
       queryClient.invalidateQueries({ queryKey: ['performance-submissions'] });
       navigation.goBack();
     },
-    onError: (err) => showErrorModal(getErrorMessage(err)),
+    onError: (err) => showToast('error', getErrorMessage(err)),
   });
 
   const onSubmit = (values: FormValues) => {
-    if (!template) {
-      showErrorModal('No active template available.');
-      return;
-    }
-    mutation.mutate({
+    if (!template) return;
+    const payload = {
       templateId: template.id,
       items: values.items.map((item) => ({
-        templateItemId: Number(item.template_item_id),
-        actualValue: Number(item.actual_value),
+        templateItemId:
+          typeof item.templateItemId === 'string'
+            ? parseInt(item.templateItemId, 10)
+            : item.templateItemId,
+        actualValue: parseFloat(item.actualValue) || 0,
+      })),
+    };
+    console.log('Performance submission payload:', {
+      template_id: payload.templateId,
+      items: payload.items.map((item) => ({
+        template_item_id: item.templateItemId,
+        actual_value: item.actualValue,
       })),
     });
+    mutation.mutate(payload);
   };
 
+  const onFormError = (errors: any) => {
+    console.log('Form validation errors:', errors);
+    showToast('error', 'Please fill in all fields correctly');
+  };
+
+  // Calculate total score
+  const totalScore = template
+    ? calculateTotalScore(watchedItems || [], template.items)
+    : 0;
+
+  // Render loading state
+  if (isLoading) {
+    return (
+      <Screen scroll>
+        <View className="gap-6">
+          <View>
+            <Text className="text-2xl font-bold text-ink-700">New Submission</Text>
+            <Text className="text-base text-ink-500">Loading template...</Text>
+          </View>
+          <LoadingSkeleton count={4} />
+        </View>
+      </Screen>
+    );
+  }
+
+  // Render error/empty state
+  if (error || !template) {
+    return (
+      <Screen scroll>
+        <View className="gap-6">
+          <View>
+            <Text className="text-2xl font-bold text-ink-700">New Submission</Text>
+            <Text className="text-base text-ink-500">Performance appraisal</Text>
+          </View>
+          <EmptyState
+            icon="calendar-outline"
+            title="No Active Template"
+            description={
+              error
+                ? getErrorMessage(error)
+                : `No appraisal template available for ${currentYear}. Please contact your administrator.`
+            }
+          />
+        </View>
+      </Screen>
+    );
+  }
+
   return (
-    <Screen scroll refreshing={isRefetching} onRefresh={refetch}>
+    <Screen scroll>
       <View className="gap-6">
+        {/* Header */}
         <View>
-          <Text className="text-2xl font-bold text-ink-700">New Appraisal</Text>
+          <Text className="text-2xl font-bold text-ink-700">New Submission</Text>
           <Text className="text-base text-ink-500">
-            Provide your actual results for each objective.
+            Fill in your actual values for each objective
           </Text>
         </View>
 
-        {isLoading ? (
-          <LoadingSkeleton count={3} />
-        ) : template ? (
-          <View className="gap-4">
-            <Card className="gap-2">
-              <Text className="text-base font-semibold text-ink-700">
-                {template.name}
+        {/* Template Info Card */}
+        <Card className="gap-2">
+          <Text className="text-lg font-semibold text-ink-700">{template.name}</Text>
+          <View className="flex-row flex-wrap gap-2">
+            <View className="rounded-full bg-blue-100 px-3 py-1">
+              <Text className="text-xs font-medium text-blue-700">
+                {template.period_year}
               </Text>
-              <View className="flex-row items-center gap-2">
-                <Text className="text-sm text-ink-500">
-                  Period: {template.period_year}
-                </Text>
-                <View className="h-1 w-1 rounded-full bg-ink-300" />
-                <Text className="text-sm text-ink-500">
-                  {template.department}
+            </View>
+            <View className="rounded-full bg-purple-100 px-3 py-1">
+              <Text className="text-xs font-medium text-purple-700">
+                {template.department}
+              </Text>
+            </View>
+            {template.role_display_name && (
+              <View className="rounded-full bg-emerald-100 px-3 py-1">
+                <Text className="text-xs font-medium text-emerald-700">
+                  {template.role_display_name}
                 </Text>
               </View>
-              <Text className="text-sm text-ink-500">
-                Role:{' '}
-                {template.employee_role_name ??
-                  template.role_display_name ??
-                  'Unassigned'}
-              </Text>
-            </Card>
+            )}
+          </View>
+        </Card>
 
-            {sortedItems.map((item, index) => (
-              <Card key={item.id} className="gap-3">
-                <View className="flex-row items-center justify-between">
-                  <View className="rounded-full bg-slate-100 px-2 py-0.5">
-                    <Text className="text-xs font-medium text-ink-500">
-                      #{item.order_no}
+        {/* Score Preview Card */}
+        <Card className="flex-row items-center justify-between">
+          <View>
+            <Text className="text-sm text-ink-500">Estimated Total Score</Text>
+            <Text className="text-xs text-ink-400">Based on current values</Text>
+          </View>
+          <ScoreBadge score={totalScore} size="lg" />
+        </Card>
+
+        {/* Template Item Cards */}
+        <View className="gap-4">
+          {template.items.map((templateItem, index) => {
+            const itemValue = watchedItems?.[index]?.actualValue || '0';
+
+            return (
+              <Card key={templateItem.id} className="gap-3">
+                {/* Order & KPI badges */}
+                <View className="flex-row items-center gap-2">
+                  <View className="h-7 w-7 items-center justify-center rounded-full bg-ink-100">
+                    <Text className="text-xs font-bold text-ink-600">
+                      {templateItem.order_no}
                     </Text>
                   </View>
-                  {item.kpi && (
-                    <View className="rounded-full bg-blue-50 px-2 py-0.5">
-                      <Text className="text-xs font-medium text-blue-700">
-                        {item.kpi}
+                  {templateItem.kpi && (
+                    <View className="rounded-full bg-amber-100 px-2 py-1">
+                      <Text className="text-xs font-medium text-amber-700">
+                        {templateItem.kpi}
                       </Text>
                     </View>
                   )}
                 </View>
-                <View>
-                  <Text className="text-sm text-ink-500">Objective</Text>
-                  <Text className="text-base font-semibold text-ink-700">
-                    {item.objective}
-                  </Text>
-                </View>
-                <View className="flex-row justify-between">
-                  <View>
-                    <Text className="text-xs text-ink-500">Target</Text>
-                    <Text className="text-sm font-medium text-ink-600">
-                      {item.target_value}
-                      {item.unit ? ` ${item.unit}` : ''}
+
+                {/* Objective */}
+                <Text className="text-base font-medium text-ink-700">
+                  {templateItem.objective}
+                </Text>
+
+                {/* Target & Weight info */}
+                <View className="flex-row gap-4">
+                  <View className="flex-1 rounded-lg bg-slate-50 p-2">
+                    <Text className="text-xs text-ink-400">Target</Text>
+                    <Text className="text-sm font-semibold text-ink-700">
+                      {templateItem.target_value}
+                      {templateItem.unit ? ` ${templateItem.unit}` : ''}
                     </Text>
                   </View>
-                  <View className="items-end">
-                    <Text className="text-xs text-ink-500">Weight</Text>
-                    <Text className="text-sm font-medium text-ink-600">
-                      {item.weight}%
+                  <View className="flex-1 rounded-lg bg-slate-50 p-2">
+                    <Text className="text-xs text-ink-400">Weight</Text>
+                    <Text className="text-sm font-semibold text-ink-700">
+                      {templateItem.weight} pts
                     </Text>
                   </View>
                 </View>
+
+                {/* Input for actual value */}
                 <FormInput
                   control={control}
-                  name={`items.${index}.actual_value` as const}
-                  label="Actual value"
-                  placeholder="0"
+                  name={`items.${index}.actualValue`}
+                  label="Your Actual Value"
                   keyboardType="numeric"
                 />
-              </Card>
-            ))}
-          </View>
-        ) : (
-          <EmptyState
-            icon="document-text-outline"
-            title="No Active Template"
-            description={`No appraisal template found for ${currentYear}.`}
-          />
-        )}
 
+                {/* Score preview for this item */}
+                <ItemScorePreview actualValue={itemValue} templateItem={templateItem} />
+              </Card>
+            );
+          })}
+        </View>
+
+        {/* Submit Button */}
         <Button
-          label={mutation.isPending ? 'Submitting...' : 'Submit Appraisal'}
-          onPress={handleSubmit(onSubmit)}
+          label={mutation.isPending ? 'Submitting...' : 'Submit Performance'}
+          onPress={handleSubmit(onSubmit, onFormError)}
           loading={mutation.isPending}
-          disabled={!template || isLoading}
         />
       </View>
     </Screen>

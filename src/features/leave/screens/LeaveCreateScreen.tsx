@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Calendar, type DateData } from 'react-native-calendars';
-import DocumentPicker from '@react-native-documents/picker';
+import { pick, types } from '@react-native-documents/picker';
 import { Screen } from '@/ui/Screen';
 import { Button } from '@/ui/Button';
 import { FormInput } from '@/ui/FormInput';
@@ -435,25 +435,20 @@ export const LeaveCreateScreen = ({ navigation }: Props) => {
 
   const handlePickAttachment = async () => {
     try {
-      const file = await DocumentPicker.pickSingle({
-        type: [
-          DocumentPicker.types.pdf,
-          DocumentPicker.types.images,
-          DocumentPicker.types.doc,
-          DocumentPicker.types.docx,
-        ],
-        copyTo: 'cachesDirectory',
+      const result = await pick({
+        type: [types.pdf, types.images, types.doc, types.docx],
       });
-      const uri = file.fileCopyUri ?? file.uri;
-      if (!uri) {
+      const file = result[0];
+      if (!file.uri) {
         showToast('error', 'Unable to read the selected file.');
         return;
       }
       const name = file.name ?? 'attachment';
       const type = file.type ?? 'application/octet-stream';
-      setAttachment({ uri, name, type });
+      setAttachment({ uri: file.uri, name, type });
     } catch (error) {
-      if (DocumentPicker.isCancel(error)) {
+      const err = error as { code?: string };
+      if (err.code === 'OPERATION_CANCELED') {
         return;
       }
       showToast('error', getErrorMessage(error));

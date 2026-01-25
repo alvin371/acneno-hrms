@@ -50,3 +50,8 @@ export const createPerformanceSubmission = async (payload: SubmissionPayload) =>
   });
   return response.data;
 };
+
+export const cancelPerformanceSubmission = async (id: number) => {
+  const response = await apiClient.post(`/performance/submissions/${id}/cancel`);
+  return response.data;
+};

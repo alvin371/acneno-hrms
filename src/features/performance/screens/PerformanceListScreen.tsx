@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Screen } from '@/ui/Screen';
 import { Card } from '@/ui/Card';
 import { Button } from '@/ui/Button';
@@ -9,11 +9,13 @@ import { EmptyState } from '@/ui/EmptyState';
 import { LoadingSkeleton } from '@/ui/LoadingSkeleton';
 import { ScoreBadge } from '@/ui/ScoreBadge';
 import {
+  cancelPerformanceSubmission,
   getActiveTemplate,
   getPerformanceSubmissions,
 } from '@/features/performance/api';
 import { statusToVariant } from '@/features/performance/utils';
 import { showErrorModal } from '@/utils/errorModal';
+import { showToast } from '@/utils/toast';
 import { getErrorMessage } from '@/api/error';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { PerformanceStackParamList } from '@/navigation/types';
@@ -23,7 +25,10 @@ type Props = NativeStackScreenProps<
   'PerformanceList'
 >;
 
+const isCancelableStatus = (status: string) => status === 'SUBMITTED';
+
 export const PerformanceListScreen = ({ navigation }: Props) => {
+  const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
 
   const {
@@ -45,6 +50,15 @@ export const PerformanceListScreen = ({ navigation }: Props) => {
   } = useQuery({
     queryKey: ['performance-template', currentYear],
     queryFn: () => getActiveTemplate(currentYear),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: cancelPerformanceSubmission,
+    onSuccess: (response) => {
+      showToast('success', response?.message || 'Submission cancelled.');
+      queryClient.invalidateQueries({ queryKey: ['performance-submissions'] });
+    },
+    onError: (mutationError) => showErrorModal(getErrorMessage(mutationError)),
   });
 
   useEffect(() => {
@@ -103,21 +117,32 @@ export const PerformanceListScreen = ({ navigation }: Props) => {
                 }
               >
                 <Card className="gap-3">
-                  <View className="flex-row items-start justify-between">
-                    <View className="flex-1 pr-3">
-                      <Text className="text-base font-semibold text-ink-700">
-                        {record.template_name}
-                      </Text>
-                      <Text className="text-sm text-ink-500">
-                        Period: {record.period_year}
-                      </Text>
-                    </View>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="flex-1 text-base font-semibold text-ink-700">
+                      {record.template_name}
+                    </Text>
+                    <StatusChip
+                      label={record.status}
+                      variant={statusToVariant(record.status)}
+                    />
+                  </View>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-sm text-ink-500">
+                      Period: {record.period_year}
+                    </Text>
                     <ScoreBadge score={record.total_score} size="md" />
                   </View>
-                  <StatusChip
-                    label={record.status}
-                    variant={statusToVariant(record.status)}
-                  />
+                  {isCancelableStatus(record.status) && (
+                    <View className="flex-row justify-end">
+                      <Button
+                        label="Cancel Submission"
+                        variant="secondary"
+                        onPress={() => cancelMutation.mutate(record.id)}
+                        loading={cancelMutation.isPending && cancelMutation.variables === record.id}
+                        disabled={cancelMutation.isPending}
+                      />
+                    </View>
+                  )}
                 </Card>
               </Pressable>
             ))}

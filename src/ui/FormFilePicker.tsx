@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Control, FieldValues, Path } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import { Platform, Pressable, Text, View } from 'react-native';
-import DocumentPicker from 'react-native-document-picker';
+import { pick, types, type DocumentPickerResponse } from '@react-native-documents/picker';
 import {
   check,
   checkMultiple,
@@ -23,7 +23,7 @@ type FormFilePickerProps<T extends FieldValues> = {
   helperText?: string;
   loading?: boolean;
   onPick?: (
-    file: DocumentPicker.DocumentPickerResponse
+    file: DocumentPickerResponse
   ) => Promise<{ value: string; fileName?: string } | string | void>;
   containerClassName?: string;
   labelClassName?: string;
@@ -128,12 +128,10 @@ export const FormFilePicker = <T extends FieldValues>({
                       showErrorModal('Storage permission is required to select files.');
                       return;
                     }
-                    const result = await DocumentPicker.pickSingle({
-                      type: [
-                        DocumentPicker.types.pdf,
-                        DocumentPicker.types.images,
-                      ],
+                    const results = await pick({
+                      type: [types.pdf, types.images],
                     });
+                    const result = results[0];
                     let nextValue = result.uri;
                     let nextName = result.name ?? '';
                     if (onPick) {
@@ -157,7 +155,8 @@ export const FormFilePicker = <T extends FieldValues>({
                       }
                     }
                   } catch (pickerError) {
-                    if (DocumentPicker.isCancel(pickerError)) {
+                    const err = pickerError as { code?: string };
+                    if (err.code === 'OPERATION_CANCELED') {
                       return;
                     }
                     throw pickerError;

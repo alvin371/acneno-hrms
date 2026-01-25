@@ -230,7 +230,7 @@ export type PerformanceTemplate = {
   items: PerformanceTemplateItem[];
 };
 
-export type PerformanceSubmissionStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+export type PerformanceSubmissionStatus = 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'CANCELED';
 
 export type PerformanceSubmission = {
   id: number;

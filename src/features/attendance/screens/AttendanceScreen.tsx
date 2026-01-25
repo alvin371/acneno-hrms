@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Platform, Text, View } from 'react-native';
-import Geolocation, { type GeoPosition } from 'react-native-geolocation-service';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Modal, Platform, Text, View } from 'react-native';
+import GeolocationService from 'react-native-geolocation-service';
+import type { GeoPosition } from 'react-native-geolocation-service';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNetInfo } from '@react-native-community/netinfo';
 import {
   check,
@@ -19,7 +20,6 @@ import { env } from '@/config/env';
 import { haversineDistanceMeters } from '@/utils/distance';
 import { getErrorMessage } from '@/api/error';
 import { showToast } from '@/utils/toast';
-import { showErrorModal } from '@/utils/errorModal';
 import { getConfig } from '@/features/config/api';
 import {
   checkIn,
@@ -77,25 +77,62 @@ const requestWifiPermission = async () => {
   return status;
 };
 
-const getCurrentLocation = () =>
-  new Promise<GeoPosition>((resolve, reject) => {
-    Geolocation.getCurrentPosition(
-      resolve,
-      () => {
-        Geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: false,
-          timeout: 20000,
-          maximumAge: 30000,
-          forceRequestLocation: true,
-        });
+const getCurrentLocation = (): Promise<GeoPosition> =>
+  new Promise((resolve, reject) => {
+    try {
+      console.log('[Geolocation] Module check:', typeof GeolocationService);
+      console.log('[Geolocation] getCurrentPosition available:', typeof GeolocationService.getCurrentPosition);
+
+      if (!GeolocationService || typeof GeolocationService.getCurrentPosition !== 'function') {
+        console.log('[Geolocation] Native module not available');
+        reject(new Error('Geolocation service not available. Please rebuild the app.'));
+        return;
+      }
+
+      console.log('[Geolocation] Calling getCurrentPosition...');
+
+      GeolocationService.getCurrentPosition(
+      (position) => {
+        console.log('[Geolocation] Success:', position.coords.latitude, position.coords.longitude);
+        resolve(position);
+      },
+      (error) => {
+        console.log('[Geolocation] Error:', error.code, error.message);
+        let message = 'Failed to get location';
+        switch (error.code) {
+          case 1:
+            message = 'Location permission denied. Please enable location access in settings.';
+            break;
+          case 2:
+            message = 'Location unavailable. Please ensure GPS is enabled and try again.';
+            break;
+          case 3:
+            message = 'Location request timed out. Please try again.';
+            break;
+          case 4:
+            message = 'Google Play Services not available. Please update Google Play Services.';
+            break;
+          case 5:
+            message = 'Location settings not satisfied. Please enable high accuracy location mode.';
+            break;
+          default:
+            message = error.message || 'Failed to get location';
+        }
+        reject(new Error(message));
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 10000,
+        timeout: 20000,
+        maximumAge: 0,
         forceRequestLocation: true,
+        forceLocationManager: false,
+        showLocationDialog: true,
       }
     );
+    } catch (err) {
+      console.log('[Geolocation] Exception:', err);
+      reject(new Error('Geolocation failed: ' + (err instanceof Error ? err.message : String(err))));
+    }
   });
 
 const normalizeBssid = (value?: string | null) =>
@@ -135,10 +172,8 @@ const isUnknownSsid = (value?: string | null) => {
   return normalized === '<unknown ssid>' || normalized === 'unknown ssid';
 };
 
-const isPlaceholderBssid = (value?: string | null) => {
-  const normalized = normalizeBssid(value);
-  return normalized === '02:00:00:00:00' || normalized === '02:00:00:00:00:00';
-};
+const isPlaceholderBssid = (value?: string | null) =>
+  normalizeBssid(value) === '02:00:00:00:00';
 
 const isSameDay = (left: Date, right: Date) =>
   left.getFullYear() === right.getFullYear() &&
@@ -160,16 +195,21 @@ export const AttendanceScreen = ({ navigation }: Props) => {
   const [wifiProofOk, setWifiProofOk] = useState<boolean | null>(null);
   const [wifiProofError, setWifiProofError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const appState = useRef(AppState.currentState);
+  const [isValidating, setIsValidating] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [showCheckOutModal, setShowCheckOutModal] = useState(false);
 
   const configQuery = useQuery({
     queryKey: ['config'],
     queryFn: getConfig,
   });
 
-  const netInfo = useNetInfo({
-    shouldFetchWiFiSSID: true,
+  const attendanceHistoryQuery = useQuery({
+    queryKey: ['attendance-history'],
+    queryFn: getAttendanceHistory,
   });
+
+  const netInfo = useNetInfo();
   const wifiDetails =
     netInfo.type === 'wifi'
       ? (netInfo.details as { ssid?: string; bssid?: string })
@@ -209,73 +249,46 @@ export const AttendanceScreen = ({ navigation }: Props) => {
     configQuery.data?.office.radius_m,
   ]);
 
-  const canCheck = wifiProofOk === true && !!location;
+  // Allow check-in if either:
+  // 1. Location is valid AND within radius AND Wi-Fi is verified, OR
+  // 2. Location failed but Wi-Fi is verified (fallback to Wi-Fi-only validation)
+  const canCheck =
+    (isWithinRadius && wifiProofOk === true && !!location) ||
+    (locationError && wifiProofOk === true);
 
   const refreshStatus = useCallback(async () => {
     setIsRefreshing(true);
-    setWifiProofOk(null);
+    setIsValidating(true);
+
+    // Reset all error states at the start
+    setLocationError(null);
     setWifiProofError(null);
+
     try {
-      const status = await requestLocationPermission();
-      setPermissionStatus(status);
-      if (status !== RESULTS.GRANTED) {
-        return;
-      }
+      // Set timeout for entire validation process
+      const validationTimeout = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Validation timeout')), 10000);
+      });
 
-      const wifiStatus = await requestWifiPermission();
-      if (wifiStatus !== RESULTS.GRANTED) {
-        setWifiProofOk(false);
-        setWifiProofError(
-          wifiStatus === RESULTS.BLOCKED
-            ? 'Wi-Fi permission is blocked. Enable it in settings.'
-            : 'Wi-Fi permission is required to verify the network.'
-        );
-        setIsRefreshing(false);
-        return;
-      }
+      await Promise.race([
+        (async () => {
+          // Step 1: Check permissions
+          const status = await requestLocationPermission();
+          setPermissionStatus(status);
 
-      // Retry Wi-Fi detection up to 3 times to ensure permissions are processed
-      let attempts = 0;
-      const maxAttempts = 3;
-      let latestNetInfo = netInfo;
-      let currentSsid: string | null = null;
-      let currentBssid: string | null = null;
-      while (attempts < maxAttempts) {
-        const refreshed = await netInfo.refresh?.();
-        if (refreshed) {
-          latestNetInfo = refreshed;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-
-        // Check if we got valid Wi-Fi info
-        const currentWifiDetails =
-          latestNetInfo.type === 'wifi'
-            ? (latestNetInfo.details as { ssid?: string; bssid?: string })
-            : null;
-        currentSsid = currentWifiDetails?.ssid ?? null;
-        currentBssid = currentWifiDetails?.bssid ?? null;
-
-        // If we got valid Wi-Fi info (not unknown/placeholder), break
-        if (
-          (currentSsid && !isUnknownSsid(currentSsid)) ||
-          (currentBssid && !isPlaceholderBssid(currentBssid))
-        ) {
-          break;
-        }
-
-        attempts++;
-        if (attempts < maxAttempts) {
-          // Wait a bit before retrying
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-      }
-
-      const configOffice = configQuery.data?.office as
-        | Record<string, unknown>
-        | undefined;
+          const wifiStatus = await requestWifiPermission();
+          if (wifiStatus !== RESULTS.GRANTED) {
+            setWifiProofOk(false);
+            setWifiProofError(
+              wifiStatus === RESULTS.BLOCKED
+                ? 'Wi-Fi permission is blocked. Enable it in settings.'
+                : 'Wi-Fi permission is required to verify the network.'
+            );
+            // Don't return - continue with location check
+          }
 
           // Step 2: Try to get location (but don't fail Wi-Fi validation if this fails)
-          let current: Geolocation.GeoPosition | null = null;
+          let current: GeoPosition | null = null;
           if (status === RESULTS.GRANTED) {
             try {
               current = await getCurrentLocation();
@@ -367,112 +380,83 @@ export const AttendanceScreen = ({ navigation }: Props) => {
             );
           }
 
-      if (latestNetInfo.type !== 'wifi') {
-        setWifiProofOk(false);
-        setWifiProofError('Not connected to Wi-Fi.');
-        return;
-      }
+          if (allowedBssids.length === 0) {
+            allowedBssids.push(
+              ...coerceStringList(env.OFFICE_WIFI_BSSID)
+                .map((bssid) => normalizeBssid(bssid))
+                .filter(Boolean)
+            );
+          }
 
-      const resolvedSsid = isUnknownSsid(currentSsid) ? null : currentSsid;
-      const resolvedBssid = isPlaceholderBssid(currentBssid) ? null : currentBssid;
+          if (allowedSsids.length === 0 && allowedBssids.length === 0) {
+            setWifiProofOk(false);
+            setWifiProofError('Office Wi-Fi is not configured.');
+            return;
+          }
 
-      if (allowedSsids.length > 0 && !resolvedSsid) {
-        setWifiProofOk(false);
-        const platformInstructions = Platform.select({
-          android:
-            Platform.Version >= 33
-              ? 'Grant "Nearby Wi-Fi devices" permission in Settings > Apps > Acneno Life > Permissions.'
-              : 'Enable Location services in Settings > Location.',
-          ios: 'Enable Location services in Settings > Privacy > Location Services.',
-        });
-        setWifiProofError(
-          `Unable to read Wi-Fi name. ${platformInstructions}`
-        );
-        return;
-      }
+          if (netInfo.type !== 'wifi') {
+            setWifiProofOk(false);
+            setWifiProofError('Not connected to Wi-Fi.');
+            return;
+          }
 
-      if (allowedBssids.length > 0 && !resolvedBssid) {
-        setWifiProofOk(false);
-        const platformInstructions = Platform.select({
-          android:
-            Platform.Version >= 33
-              ? 'Grant "Nearby Wi-Fi devices" permission in Settings > Apps > Acneno Life > Permissions.'
-              : 'Enable Location services in Settings > Location.',
-          ios: 'Enable Location services in Settings > Privacy > Location Services.',
-        });
-        setWifiProofError(
-          `Unable to read Wi-Fi access point. ${platformInstructions}`
-        );
-        return;
-      }
+          if (allowedSsids.length > 0 && !wifiSsid) {
+            setWifiProofOk(false);
+            setWifiProofError(
+              'Unable to read Wi-Fi name. Ensure Wi-Fi and location are enabled.'
+            );
+            return;
+          }
 
-      if (
-        allowedSsids.length > 0 &&
-        !allowedSsids.includes(normalizeSsid(resolvedSsid))
-      ) {
-        setWifiProofOk(false);
-        setWifiProofError('Connected Wi-Fi is not the office network.');
-        return;
-      }
+          if (allowedBssids.length > 0 && !wifiBssid) {
+            setWifiProofOk(false);
+            setWifiProofError(
+              'Unable to read Wi-Fi access point. Ensure Wi-Fi and location are enabled.'
+            );
+            return;
+          }
 
-      if (
-        allowedBssids.length > 0 &&
-        !allowedBssids.includes(normalizeBssid(resolvedBssid))
-      ) {
-        setWifiProofOk(false);
-        setWifiProofError('Office Wi-Fi access point mismatch.');
-        return;
-      }
+          if (allowedSsids.length > 0 && !allowedSsids.includes(normalizeSsid(wifiSsid))) {
+            setWifiProofOk(false);
+            setWifiProofError('Connected Wi-Fi is not the office network.');
+            return;
+          }
 
-      try {
-        const proof = await requestOfficeProof({
-          bssid: resolvedBssid ?? undefined,
-          ssid: resolvedSsid ?? undefined,
-        });
-        if (proof.ok) {
-          setWifiProofOk(true);
-          setWifiProofError(null);
-        } else {
-          setWifiProofOk(false);
-          setWifiProofError('Office Wi-Fi proof failed.');
-        }
-      } catch (error) {
+          if (allowedBssids.length > 0 && !allowedBssids.includes(normalizeBssid(wifiBssid))) {
+            setWifiProofOk(false);
+            setWifiProofError('Office Wi-Fi access point mismatch.');
+            return;
+          }
+
+          // Final step: Verify with backend
+          try {
+            const proof = await requestOfficeProof({
+              bssid: wifiBssid ?? undefined,
+              ssid: wifiSsid ?? undefined,
+            });
+            if (proof.ok) {
+              setWifiProofOk(true);
+              setWifiProofError(null);
+            } else {
+              setWifiProofOk(false);
+              setWifiProofError('Office Wi-Fi proof failed.');
+            }
+          } catch (error) {
+            setWifiProofOk(false);
+            setWifiProofError(getErrorMessage(error));
+          }
+        })(),
+        validationTimeout,
+      ]);
+    } catch (error) {
+      // Handle timeout or unexpected errors
+      if (getErrorMessage(error).includes('timeout')) {
         setWifiProofOk(false);
         setWifiProofError('Validation timeout. Please try again.');
       } else {
         setWifiProofOk(false);
         setWifiProofError('Validation failed. Please try again.');
       }
-
-      let current: GeoPosition;
-      try {
-        current = await getCurrentLocation();
-        setLocationError(null);
-      } catch (error) {
-        setLocation(null);
-        setDistanceMeters(null);
-        setLocationError(getErrorMessage(error));
-        return;
-      }
-      setLocation(current);
-      const officeLat = toNumber(
-        configOffice?.lat ?? configOffice?.latitude ?? env.OFFICE_LAT
-      );
-      const officeLng = toNumber(
-        configOffice?.lng ?? configOffice?.longitude ?? env.OFFICE_LNG
-      );
-      if (officeLat == null || officeLng == null) {
-        setDistanceMeters(null);
-        setLocationError('Office location is not configured.');
-        return;
-      }
-      const distance = haversineDistanceMeters(
-        current.coords.latitude,
-        current.coords.longitude,
-        officeLat,
-        officeLng
-      );
-      setDistanceMeters(distance);
     } finally {
       setIsRefreshing(false);
       setIsValidating(false);
@@ -490,24 +474,6 @@ export const AttendanceScreen = ({ navigation }: Props) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configQuery.data]);
-
-  // Refresh permission status when app returns from background (e.g., after settings)
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
-        refreshStatus();
-      }
-      appState.current = nextAppState;
-    });
-
-    return () => {
-      subscription.remove();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const createPayload = (): AttendancePayload | null => {
     // If location is available, use full validation
@@ -549,8 +515,16 @@ export const AttendanceScreen = ({ navigation }: Props) => {
       }
       return checkIn(payload);
     },
-    onSuccess: () => showToast('success', 'Checked in successfully.'),
-    onError: (error) => showErrorModal(getErrorMessage(error)),
+    onSuccess: () => {
+      setShowCheckInModal(false);
+      queryClient.invalidateQueries({ queryKey: ['attendance-history'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-report'] });
+      showToast('success', 'Checked in successfully.');
+    },
+    onError: (error) => {
+      setShowCheckInModal(false);
+      showToast('error', getErrorMessage(error));
+    },
   });
 
   const checkOutMutation = useMutation({
@@ -561,8 +535,16 @@ export const AttendanceScreen = ({ navigation }: Props) => {
       }
       return checkOut(payload);
     },
-    onSuccess: () => showToast('success', 'Checked out successfully.'),
-    onError: (error) => showErrorModal(getErrorMessage(error)),
+    onSuccess: () => {
+      setShowCheckOutModal(false);
+      queryClient.invalidateQueries({ queryKey: ['attendance-history'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance-report'] });
+      showToast('success', 'Checked out successfully.');
+    },
+    onError: (error) => {
+      setShowCheckOutModal(false);
+      showToast('error', getErrorMessage(error));
+    },
   });
 
   const weeklyRecords = useMemo(() => {

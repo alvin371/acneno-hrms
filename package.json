@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "NODE_OPTIONS=\"--require=$PWD/scripts/node-util-styletext.js\" react-native start",
-    "android": "RCT_NO_LAUNCH_PACKAGER=1 NODE_OPTIONS=\"--require=$PWD/scripts/node-util-styletext.js\" react-native run-android --no-packager",
-    "ios": "RCT_NO_LAUNCH_PACKAGER=1 NODE_OPTIONS=\"--require=$PWD/scripts/node-util-styletext.js\" react-native run-ios --no-packager -- -allowProvisioningUpdates",
+    "check-node": "node -e \"const [major, minor] = process.versions.node.split('.').map(Number); if (major < 20 || (major === 20 && minor < 12)) { console.error('\\n\\x1b[31m✖ Node.js version too old!\\x1b[0m\\n\\nYou are using Node.js v' + process.versions.node + ', but this project requires Node.js >= v20.12.0.\\nThe util.styleText function used by React Native CLI was added in v20.12.0.\\n\\n\\x1b[33mTo fix this, upgrade Node.js:\\x1b[0m\\n  • nvm: nvm install 20.12.0 && nvm use 20.12.0\\n  • brew: brew upgrade node\\n  • n: n 20.12.0\\n'); process.exit(1); }\"",
+    "start": "pnpm check-node && react-native start",
+    "android": "pnpm check-node && react-native run-android",
+    "ios": "pnpm check-node && react-native run-ios",
     "lint": "eslint .",
     "test": "jest",
     "typecheck": "tsc --noEmit"
@@ -13,7 +14,6 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@react-native-community/netinfo": "^11.4.1",
-    "@react-native-community/push-notification-ios": "^1.11.1",
     "@react-native-documents/picker": "^12.0.0",
     "@react-navigation/bottom-tabs": "^7.9.0",
     "@react-navigation/native": "^7.1.26",
@@ -25,18 +25,16 @@
     "react": "19.2.3",
     "react-hook-form": "^7.70.0",
     "react-native": "0.83.1",
-    "react-native-calendars": "^1.1307.0",
+    "react-native-calendars": "^1.1310.0",
     "react-native-config": "^1.6.1",
-    "react-native-document-picker": "^9.1.1",
     "react-native-geolocation-service": "^5.3.1",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-keychain": "^10.0.0",
-    "react-native-pdf": "^7.0.3",
     "react-native-permissions": "^5.4.4",
     "react-native-reanimated": "~4.2.1",
     "react-native-safe-area-context": "^5.6.2",
     "react-native-screens": "~4.19.0",
-    "react-native-svg": "^15.12.0",
+    "react-native-svg": "^15.15.1",
     "react-native-toast-message": "^2.3.3",
     "react-native-vector-icons": "^10.3.0",
     "react-native-worklets": "0.7.1",
@@ -66,6 +64,6 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.12.0"
   }
 }
