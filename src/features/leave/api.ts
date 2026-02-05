@@ -31,12 +31,9 @@ export const getLeaveQuota = async () => {
 };
 
 export const getHolidays = async (start?: string, end?: string) => {
-  const response = await apiClient.get<{ data: Holiday[] }>(
-    '/holidays',
-    {
-      params: start && end ? { start, end } : undefined,
-    }
-  );
+  const response = await apiClient.get<{ data: Holiday[] }>('/holidays', {
+    params: start && end ? { start, end } : undefined,
+  });
   return response.data.data;
 };
 
@@ -58,13 +55,6 @@ export const cancelLeave = async (id: number) => {
     status: string;
   }>(`/leave/${id}/cancel`);
   return response.data;
-};
-
-export const getHolidays = async (params: { start?: string; end?: string }) => {
-  const response = await apiClient.get<{ data: Holiday[] }>('/holidays', {
-    params,
-  });
-  return response.data.data;
 };
 
 type UploadFilePayload = {

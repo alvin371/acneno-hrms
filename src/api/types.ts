@@ -263,3 +263,52 @@ export type PerformanceSubmissionDetail = {
   status: PerformanceSubmissionStatus;
   items: PerformanceSubmissionItem[];
 };
+
+export type OvertimeStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+export type OvertimeStatusRaw = 'SUBMITTED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+export type OvertimeType = {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  isActive: number;
+  requiresAttachment: number;
+};
+
+export type OvertimeRecord = {
+  id: number;
+  requestNo: string;
+  overtimeTypeId: number;
+  overtimeTypeName: string;
+  overtimeDate: string;
+  startTime: string;
+  endTime: string;
+  durationHours: number;
+  reason: string;
+  status: OvertimeStatus;
+  statusRaw: OvertimeStatusRaw;
+  attachmentPath: string | null;
+};
+
+export type OvertimeApproval = {
+  id: number;
+  stepNo: number;
+  stepName: string;
+  approverId: number;
+  approverName: string;
+  action: string;
+  actionAt: string | null;
+  notes: string | null;
+};
+
+export type OvertimeDetail = OvertimeRecord & {
+  requester: User;
+  overtimeTypeCode: string;
+  requiresAttachment: number;
+  currentStep: number;
+  totalSteps: number;
+  createdAt: string;
+  updatedAt: string;
+  approvals: OvertimeApproval[];
+};

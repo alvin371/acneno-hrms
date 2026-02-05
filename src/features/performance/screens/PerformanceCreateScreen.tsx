@@ -185,7 +185,7 @@ export const PerformanceCreateScreen = ({ navigation }: Props) => {
 
   return (
     <Screen scroll>
-      <View className="gap-6">
+      <View className="gap-6 pb-24">
         {/* Header */}
         <View>
           <Text className="text-2xl font-bold text-ink-700">New Submission</Text>

@@ -8,6 +8,7 @@ export type MainTabsParamList = {
   Leave: undefined;
   Performance: undefined;
   Profile: undefined;
+  Overtime: undefined;
 };
 
 export type AttendanceStackParamList = {
@@ -30,4 +31,9 @@ export type PerformanceStackParamList = {
   PerformanceList: undefined;
   PerformanceCreate: undefined;
   PerformanceDetail: { id: number };
+};
+
+export type OvertimeStackParamList = {
+  OvertimeRequest: undefined;
+  OvertimeDetail: { id: number };
 };

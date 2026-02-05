@@ -1,5 +1,5 @@
-import { Text, View } from 'react-native';
-import { useMemo, useState } from 'react';
+import { Modal, Pressable, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,18 +28,11 @@ import type { Holiday } from '@/api/types';
 import type { LeaveStackParamList } from '@/navigation/types';
 import { env } from '@/config/env';
 
-const pad2 = (value: number) => String(value).padStart(2, '0');
-
-const formatDate = (date: Date) =>
-  `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-
-const getMonthRange = (date: Date) => {
-  const start = new Date(date.getFullYear(), date.getMonth(), 1);
-  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  return {
-    start: formatDate(start),
-    end: formatDate(end),
-  };
+const formatDateUTC = (date: Date) => {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 const isDateString = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -56,7 +49,7 @@ const schema = z
     attachmentPath: z.string().min(1, 'Attachment is required'),
   })
   .superRefine((values, context) => {
-    const today = formatDate(new Date());
+    const today = formatDateUTC(new Date());
 
     if (isDateString(values.startDate)) {
       if (compareDateStrings(values.startDate, today) < 0) {
@@ -101,13 +94,6 @@ const getMonthRange = (monthKey: string) => {
     start: formatDateUTC(start),
     end: formatDateUTC(end),
   };
-};
-
-const formatDateUTC = (date: Date) => {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 };
 
 const addDaysUTC = (dateString: string, days: number) => {
@@ -209,39 +195,15 @@ export const LeaveCreateScreen = ({ navigation }: Props) => {
     [todayInJakarta]
   );
 
-  const startDate = useWatch({ control, name: 'startDate' });
-  const todayString = formatDate(new Date());
-  const [holidayRange, setHolidayRange] = useState(() =>
-    getMonthRange(new Date())
+  const holidayDates = useMemo(
+    () => holidays.filter((h) => h.isHoliday).map((h) => h.date),
+    [holidays]
   );
 
   const quotaQuery = useQuery({
     queryKey: ['leave-quota'],
     queryFn: getLeaveQuota,
   });
-
-  const holidaysQuery = useQuery({
-    queryKey: ['holidays', holidayRange.start, holidayRange.end],
-    queryFn: () =>
-      getHolidays({ start: holidayRange.start, end: holidayRange.end }),
-  });
-
-  const holidayDates = useMemo(
-    () =>
-      holidaysQuery.data
-        ? holidaysQuery.data.filter((holiday) => holiday.isHoliday)
-            .map((holiday) => holiday.date)
-        : [],
-    [holidaysQuery.data]
-  );
-
-  const handleMonthChange = (dateString: string) => {
-    const [year, month] = dateString.split('-').map(Number);
-    if (!year || !month) {
-      return;
-    }
-    setHolidayRange(getMonthRange(new Date(year, month - 1, 1)));
-  };
 
   const mutation = useMutation({
     mutationFn: createLeave,
@@ -425,6 +387,11 @@ export const LeaveCreateScreen = ({ navigation }: Props) => {
     void fetchHolidays(range.start, range.end);
   };
 
+  const handleFormMonthChange = (dateString: string) => {
+    const range = getMonthRange(formatMonthKey(dateString));
+    void fetchHolidays(range.start, range.end);
+  };
+
   const handleClearDates = () => {
     setValue('startDate', '', { shouldValidate: true });
     setValue('endDate', '', { shouldValidate: true });
@@ -461,7 +428,7 @@ export const LeaveCreateScreen = ({ navigation }: Props) => {
 
   return (
     <Screen scroll>
-      <View className="gap-6">
+      <View className="gap-6 pb-20">
         <View>
           <Text className="text-2xl font-bold text-ink-700">New Leave</Text>
           <Text className="text-base text-ink-500">
@@ -507,18 +474,18 @@ export const LeaveCreateScreen = ({ navigation }: Props) => {
             name="startDate"
             label="Start date"
             placeholder="YYYY-MM-DD"
-            minimumDate={todayString}
+            minimumDate={todayInJakarta}
             holidayDates={holidayDates}
-            onMonthChange={handleMonthChange}
+            onMonthChange={handleFormMonthChange}
           />
           <FormDatePicker
             control={control}
             name="endDate"
             label="End date"
             placeholder="YYYY-MM-DD"
-            minimumDate={startDate || todayString}
+            minimumDate={startDate || todayInJakarta}
             holidayDates={holidayDates}
-            onMonthChange={handleMonthChange}
+            onMonthChange={handleFormMonthChange}
           />
           <FormInput
             control={control}

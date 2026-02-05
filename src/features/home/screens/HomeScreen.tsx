@@ -63,7 +63,7 @@ export const HomeScreen = ({ navigation }: Props) => {
       | 'cuti'
       | 'slip'
       | 'performance'
-      | 'approvals'
+      | 'overtime'
       | 'employee';
     color: string;
   }) => {
@@ -141,17 +141,23 @@ export const HomeScreen = ({ navigation }: Props) => {
             <Circle cx="13" cy="16" r="1.6" fill={color} />
           </Svg>
         );
-      case 'approvals':
+      case 'overtime':
         return (
           <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+            <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={2} />
             <Path
-              d="M7 12l3 3 7-7"
+              d="M12 7v5l3 3"
               stroke={color}
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={2} />
+            <Path
+              d="M17 7h2M18 6v2"
+              stroke={color}
+              strokeWidth={2}
+              strokeLinecap="round"
+            />
           </Svg>
         );
       case 'employee':
@@ -346,26 +352,26 @@ export const HomeScreen = ({ navigation }: Props) => {
             }}
           >
             <View className="flex-row flex-wrap justify-between">
-              {[
+              {([
                 {
                   label: 'Absensi',
-                  icon: 'absensi',
+                  icon: 'absensi' as const,
                   onPress: () => navigation.navigate('Attendance'),
                 },
                 {
                   label: 'Cuti',
-                  icon: 'cuti',
+                  icon: 'cuti' as const,
                   onPress: () => navigation.navigate('Leave'),
                 },
-                { label: 'Slip Gaji', icon: 'slip' },
+                { label: 'Slip Gaji', icon: 'slip' as const },
                 {
                   label: 'Performance',
-                  icon: 'performance',
+                  icon: 'performance' as const,
                   onPress: () => navigation.navigate('Performance'),
                 },
-                { label: 'Persetujuan', icon: 'approvals' },
-                { label: 'Karyawan', icon: 'employee' },
-              ].map((item) => (
+                { label: 'Lembur', icon: 'overtime' as const, onPress: () => navigation.navigate('Overtime') },
+                { label: 'Karyawan', icon: 'employee' as const },
+              ]).map((item) => (
                 <Pressable
                   key={item.label}
                   onPress={item.onPress}

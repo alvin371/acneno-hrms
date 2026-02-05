@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Platform, Text, View } from 'react-native';
-import GeolocationService from 'react-native-geolocation-service';
-import type { GeoPosition } from 'react-native-geolocation-service';
+import Geolocation from '@react-native-community/geolocation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNetInfo } from '@react-native-community/netinfo';
 import {
@@ -77,13 +76,16 @@ const requestWifiPermission = async () => {
   return status;
 };
 
-const getCurrentLocation = (): Promise<GeoPosition> =>
+const getCurrentLocation = (): Promise<DeviceLocation> =>
   new Promise((resolve, reject) => {
     try {
-      console.log('[Geolocation] Module check:', typeof GeolocationService);
-      console.log('[Geolocation] getCurrentPosition available:', typeof GeolocationService.getCurrentPosition);
+      console.log('[Geolocation] Module check:', typeof Geolocation);
+      console.log(
+        '[Geolocation] getCurrentPosition available:',
+        typeof Geolocation.getCurrentPosition
+      );
 
-      if (!GeolocationService || typeof GeolocationService.getCurrentPosition !== 'function') {
+      if (!Geolocation || typeof Geolocation.getCurrentPosition !== 'function') {
         console.log('[Geolocation] Native module not available');
         reject(new Error('Geolocation service not available. Please rebuild the app.'));
         return;
@@ -91,7 +93,7 @@ const getCurrentLocation = (): Promise<GeoPosition> =>
 
       console.log('[Geolocation] Calling getCurrentPosition...');
 
-      GeolocationService.getCurrentPosition(
+      Geolocation.getCurrentPosition(
       (position) => {
         console.log('[Geolocation] Success:', position.coords.latitude, position.coords.longitude);
         resolve(position);
@@ -124,9 +126,6 @@ const getCurrentLocation = (): Promise<GeoPosition> =>
         enableHighAccuracy: true,
         timeout: 20000,
         maximumAge: 0,
-        forceRequestLocation: true,
-        forceLocationManager: false,
-        showLocationDialog: true,
       }
     );
     } catch (err) {
@@ -180,6 +179,14 @@ const isSameDay = (left: Date, right: Date) =>
   left.getMonth() === right.getMonth() &&
   left.getDate() === right.getDate();
 
+type DeviceLocation = {
+  coords: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+  };
+};
+
 type Props = NativeStackScreenProps<
   AttendanceStackParamList,
   'AttendanceMain'
@@ -189,7 +196,7 @@ export const AttendanceScreen = ({ navigation }: Props) => {
   const queryClient = useQueryClient();
   const [now, setNow] = useState(new Date());
   const [permissionStatus, setPermissionStatus] = useState<string>();
-  const [location, setLocation] = useState<GeoPosition | null>(null);
+  const [location, setLocation] = useState<DeviceLocation | null>(null);
   const [distanceMeters, setDistanceMeters] = useState<number | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [wifiProofOk, setWifiProofOk] = useState<boolean | null>(null);
@@ -288,7 +295,7 @@ export const AttendanceScreen = ({ navigation }: Props) => {
           }
 
           // Step 2: Try to get location (but don't fail Wi-Fi validation if this fails)
-          let current: GeoPosition | null = null;
+          let current: DeviceLocation | null = null;
           if (status === RESULTS.GRANTED) {
             try {
               current = await getCurrentLocation();
