@@ -9,7 +9,8 @@
     "ios": "pnpm check-node && react-native run-ios",
     "lint": "eslint .",
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ios:archive": "xcodebuild -workspace ios/HrManagementSystem.xcworkspace -scheme HrManagementSystem -configuration Release -archivePath \"$HOME/Library/Developer/Xcode/Archives/$(date +%Y-%m-%d)/HrManagementSystem $(date +%Y-%m-%d\\ %H.%M.%S).xcarchive\" archive"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

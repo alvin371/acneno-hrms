@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { Control, FieldValues, Path } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import { Modal, Pressable, Text, View } from 'react-native';
@@ -43,7 +43,7 @@ export const FormDatePicker = <T extends FieldValues>({
       render={({ field: { onChange, value }, fieldState: { error } }) => {
         const displayValue = value ? String(value) : '';
 
-        const markedDates = useMemo(() => {
+        const markedDates = (() => {
           if (!displayValue && (!holidayDates || holidayDates.length === 0)) {
             return undefined;
           }
@@ -88,7 +88,7 @@ export const FormDatePicker = <T extends FieldValues>({
           }
 
           return marks;
-        }, [displayValue, holidayDates]);
+        })();
 
         const openPicker = () => {
           setOpen(true);

@@ -6,7 +6,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Calendar, type DateData } from 'react-native-calendars';
-import { pick, types } from '@react-native-documents/picker';
 import { Screen } from '@/ui/Screen';
 import { Button } from '@/ui/Button';
 import { FormInput } from '@/ui/FormInput';
@@ -23,7 +22,6 @@ import { showToast } from '@/utils/toast';
 import { showErrorModal } from '@/utils/errorModal';
 import { getErrorMessage } from '@/api/error';
 import { queryClient } from '@/lib/queryClient';
-import { cn } from '@/utils/cn';
 import type { Holiday } from '@/api/types';
 import type { LeaveStackParamList } from '@/navigation/types';
 import { env } from '@/config/env';
@@ -111,7 +109,7 @@ const getTodayInJakarta = () => {
       month: '2-digit',
       day: '2-digit',
     }).format(new Date());
-  } catch (error) {
+  } catch {
     return formatDateUTC(new Date());
   }
 };
@@ -124,17 +122,9 @@ const formatDayName = (dateString: string) => {
       weekday: 'short',
       timeZone: JAKARTA_TIMEZONE,
     }).format(date);
-  } catch (error) {
+  } catch {
     return '';
   }
-};
-
-type DateFieldProps = {
-  label: string;
-  value?: string;
-  placeholder?: string;
-  error?: string;
-  onPress: () => void;
 };
 
 type LeaveAttachment = {
@@ -143,37 +133,13 @@ type LeaveAttachment = {
   type: string;
 };
 
-const DateField = ({
-  label,
-  value,
-  placeholder,
-  error,
-  onPress,
-}: DateFieldProps) => (
-  <View className="gap-2">
-    <Text className="text-sm font-medium text-ink-600">{label}</Text>
-    <Pressable
-      onPress={onPress}
-      className={cn(
-        'rounded-xl border border-slate-200 bg-white px-3 py-3',
-        error && 'border-red-300'
-      )}
-    >
-      <Text className={cn('text-base', value ? 'text-ink-700' : 'text-slate-400')}>
-        {value || placeholder}
-      </Text>
-    </Pressable>
-    {error ? <Text className="text-xs text-red-600">{error}</Text> : null}
-  </View>
-);
-
 export const LeaveCreateScreen = ({ navigation }: Props) => {
   const {
     control,
     handleSubmit,
     setValue,
     clearErrors,
-    formState: { errors },
+    formState: { },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -184,7 +150,7 @@ export const LeaveCreateScreen = ({ navigation }: Props) => {
       attachmentPath: '',
     },
   });
-  const [attachment, setAttachment] = useState<LeaveAttachment | null>(null);
+  const [_attachment] = useState<LeaveAttachment | null>(null);
   const [isPickerOpen, setPickerOpen] = useState(false);
   const todayInJakarta = useMemo(() => getTodayInJakarta(), []);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -398,32 +364,6 @@ export const LeaveCreateScreen = ({ navigation }: Props) => {
     clearErrors(['startDate', 'endDate']);
     const range = getMonthRange(formatMonthKey(todayInJakarta));
     void fetchHolidays(range.start, range.end);
-  };
-
-  const handlePickAttachment = async () => {
-    try {
-      const result = await pick({
-        type: [types.pdf, types.images, types.doc, types.docx],
-      });
-      const file = result[0];
-      if (!file.uri) {
-        showToast('error', 'Unable to read the selected file.');
-        return;
-      }
-      const name = file.name ?? 'attachment';
-      const type = file.type ?? 'application/octet-stream';
-      setAttachment({ uri: file.uri, name, type });
-    } catch (error) {
-      const err = error as { code?: string };
-      if (err.code === 'OPERATION_CANCELED') {
-        return;
-      }
-      showToast('error', getErrorMessage(error));
-    }
-  };
-
-  const handleClearAttachment = () => {
-    setAttachment(null);
   };
 
   return (

@@ -202,7 +202,7 @@ export const AttendanceScreen = ({ navigation }: Props) => {
   const [wifiProofOk, setWifiProofOk] = useState<boolean | null>(null);
   const [wifiProofError, setWifiProofError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
+  const [_isValidating, setIsValidating] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showCheckOutModal, setShowCheckOutModal] = useState(false);
 
@@ -341,7 +341,7 @@ export const AttendanceScreen = ({ navigation }: Props) => {
                   setDistanceMeters(null);
                   setLocationError('Unable to calculate distance to office.');
                 }
-              } catch (error) {
+              } catch {
                 setDistanceMeters(null);
                 setLocationError('Unable to calculate distance to office.');
               }
