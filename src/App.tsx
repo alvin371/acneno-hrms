@@ -10,11 +10,12 @@ import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/store/authStore';
 import { ErrorModal } from '@/ui/ErrorModal';
 
+NetInfo.configure({ shouldFetchWiFiSSID: true });
+
 const App = () => {
   const bootstrap = useAuthStore((state) => state.bootstrap);
 
   useEffect(() => {
-    NetInfo.configure({ shouldFetchWiFiSSID: true });
     bootstrap();
   }, [bootstrap]);
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Platform, Text, View } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNetInfo } from '@react-native-community/netinfo';
+import NetInfo, { useNetInfo } from '@react-native-community/netinfo';
 import {
   check,
   checkMultiple,
@@ -350,7 +350,19 @@ export const AttendanceScreen = ({ navigation }: Props) => {
             }
           }
 
-          // Step 4: INDEPENDENT Wi-Fi validation (works regardless of location status)
+          // Step 4: Fetch fresh Wi-Fi state (critical for iOS where
+          // SSID/BSSID are only readable after location permission is granted)
+          const freshState = await NetInfo.refresh();
+          const freshDetails =
+            freshState.type === 'wifi'
+              ? (freshState.details as { ssid?: string; bssid?: string })
+              : null;
+          const freshRawSsid = freshDetails?.ssid ?? null;
+          const freshRawBssid = freshDetails?.bssid ?? null;
+          const freshSsid = isUnknownSsid(freshRawSsid) ? null : freshRawSsid;
+          const freshBssid = isPlaceholderBssid(freshRawBssid) ? null : freshRawBssid;
+
+          // Step 5: INDEPENDENT Wi-Fi validation (works regardless of location status)
           const configOffice = configQuery.data?.office as
             | Record<string, unknown>
             | undefined;
@@ -401,13 +413,13 @@ export const AttendanceScreen = ({ navigation }: Props) => {
             return;
           }
 
-          if (netInfo.type !== 'wifi') {
+          if (freshState.type !== 'wifi') {
             setWifiProofOk(false);
             setWifiProofError('Not connected to Wi-Fi.');
             return;
           }
 
-          if (allowedSsids.length > 0 && !wifiSsid) {
+          if (allowedSsids.length > 0 && !freshSsid) {
             setWifiProofOk(false);
             setWifiProofError(
               'Unable to read Wi-Fi name. Ensure Wi-Fi and location are enabled.'
@@ -415,7 +427,7 @@ export const AttendanceScreen = ({ navigation }: Props) => {
             return;
           }
 
-          if (allowedBssids.length > 0 && !wifiBssid) {
+          if (allowedBssids.length > 0 && !freshBssid) {
             setWifiProofOk(false);
             setWifiProofError(
               'Unable to read Wi-Fi access point. Ensure Wi-Fi and location are enabled.'
@@ -423,13 +435,13 @@ export const AttendanceScreen = ({ navigation }: Props) => {
             return;
           }
 
-          if (allowedSsids.length > 0 && !allowedSsids.includes(normalizeSsid(wifiSsid))) {
+          if (allowedSsids.length > 0 && !allowedSsids.includes(normalizeSsid(freshSsid))) {
             setWifiProofOk(false);
             setWifiProofError('Connected Wi-Fi is not the office network.');
             return;
           }
 
-          if (allowedBssids.length > 0 && !allowedBssids.includes(normalizeBssid(wifiBssid))) {
+          if (allowedBssids.length > 0 && !allowedBssids.includes(normalizeBssid(freshBssid))) {
             setWifiProofOk(false);
             setWifiProofError('Office Wi-Fi access point mismatch.');
             return;
@@ -438,8 +450,8 @@ export const AttendanceScreen = ({ navigation }: Props) => {
           // Final step: Verify with backend
           try {
             const proof = await requestOfficeProof({
-              bssid: wifiBssid ?? undefined,
-              ssid: wifiSsid ?? undefined,
+              bssid: freshBssid ?? undefined,
+              ssid: freshSsid ?? undefined,
             });
             if (proof.ok) {
               setWifiProofOk(true);
@@ -468,7 +480,7 @@ export const AttendanceScreen = ({ navigation }: Props) => {
       setIsRefreshing(false);
       setIsValidating(false);
     }
-  }, [configQuery.data, netInfo.type, wifiSsid, wifiBssid]);
+  }, [configQuery.data]);
 
   useEffect(() => {
     refreshStatus();
@@ -482,15 +494,6 @@ export const AttendanceScreen = ({ navigation }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configQuery.data]);
 
-  // Re-validate when Wi-Fi info becomes available (critical for iOS).
-  // On iOS, SSID/BSSID are only readable after location permission is granted,
-  // so the initial validation runs with null values and needs to re-run.
-  useEffect(() => {
-    if (wifiSsid || wifiBssid) {
-      refreshStatus();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wifiSsid, wifiBssid]);
 
   const createPayload = (): AttendancePayload | null => {
     // If location is available, use full validation

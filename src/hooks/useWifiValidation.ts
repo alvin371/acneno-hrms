@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Platform } from 'react-native';
-import { useNetInfo } from '@react-native-community/netinfo';
+import NetInfo, { useNetInfo } from '@react-native-community/netinfo';
 import {
   check,
   checkMultiple,
@@ -141,7 +141,19 @@ export const useWifiValidation = (): WifiValidationState => {
             return;
           }
 
-          // Step 2: Wi-Fi validation
+          // Step 2: Fetch fresh Wi-Fi state (critical for iOS where
+          // SSID/BSSID are only readable after location permission is granted)
+          const freshState = await NetInfo.refresh();
+          const freshDetails =
+            freshState.type === 'wifi'
+              ? (freshState.details as { ssid?: string; bssid?: string })
+              : null;
+          const freshRawSsid = freshDetails?.ssid ?? null;
+          const freshRawBssid = freshDetails?.bssid ?? null;
+          const freshSsid = isUnknownSsid(freshRawSsid) ? null : freshRawSsid;
+          const freshBssid = isPlaceholderBssid(freshRawBssid) ? null : freshRawBssid;
+
+          // Step 3: Wi-Fi validation
           const configOffice = configQuery.data?.office as
             | Record<string, unknown>
             | undefined;
@@ -192,13 +204,13 @@ export const useWifiValidation = (): WifiValidationState => {
             return;
           }
 
-          if (netInfo.type !== 'wifi') {
+          if (freshState.type !== 'wifi') {
             setWifiProofOk(false);
             setWifiProofError('Not connected to Wi-Fi.');
             return;
           }
 
-          if (allowedSsids.length > 0 && !wifiSsid) {
+          if (allowedSsids.length > 0 && !freshSsid) {
             setWifiProofOk(false);
             setWifiProofError(
               'Unable to read Wi-Fi name. Ensure Wi-Fi and location are enabled.'
@@ -206,7 +218,7 @@ export const useWifiValidation = (): WifiValidationState => {
             return;
           }
 
-          if (allowedBssids.length > 0 && !wifiBssid) {
+          if (allowedBssids.length > 0 && !freshBssid) {
             setWifiProofOk(false);
             setWifiProofError(
               'Unable to read Wi-Fi access point. Ensure Wi-Fi and location are enabled.'
@@ -216,7 +228,7 @@ export const useWifiValidation = (): WifiValidationState => {
 
           if (
             allowedSsids.length > 0 &&
-            !allowedSsids.includes(normalizeSsid(wifiSsid))
+            !allowedSsids.includes(normalizeSsid(freshSsid))
           ) {
             setWifiProofOk(false);
             setWifiProofError('Connected Wi-Fi is not the office network.');
@@ -225,7 +237,7 @@ export const useWifiValidation = (): WifiValidationState => {
 
           if (
             allowedBssids.length > 0 &&
-            !allowedBssids.includes(normalizeBssid(wifiBssid))
+            !allowedBssids.includes(normalizeBssid(freshBssid))
           ) {
             setWifiProofOk(false);
             setWifiProofError('Office Wi-Fi access point mismatch.');
@@ -235,8 +247,8 @@ export const useWifiValidation = (): WifiValidationState => {
           // Final step: Verify with backend
           try {
             const proof = await requestOfficeProof({
-              bssid: wifiBssid ?? undefined,
-              ssid: wifiSsid ?? undefined,
+              bssid: freshBssid ?? undefined,
+              ssid: freshSsid ?? undefined,
             });
             if (proof.ok) {
               setWifiProofOk(true);
@@ -263,7 +275,7 @@ export const useWifiValidation = (): WifiValidationState => {
     } finally {
       setIsValidating(false);
     }
-  }, [configQuery.data, netInfo.type, wifiSsid, wifiBssid]);
+  }, [configQuery.data]);
 
   return {
     isValidating,
