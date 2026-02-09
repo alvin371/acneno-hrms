@@ -1,5 +1,5 @@
 import { FlatList, Pressable, Text, View } from 'react-native';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,6 +16,7 @@ import { FormSelect } from '@/ui/FormSelect';
 import { FormFilePicker } from '@/ui/FormFilePicker';
 import { Card } from '@/ui/Card';
 import { StatusChip } from '@/ui/StatusChip';
+import { WifiValidationCard } from '@/ui/WifiValidationCard';
 import {
   createOvertime,
   getOvertimes,
@@ -28,6 +29,7 @@ import { showErrorModal } from '@/utils/errorModal';
 import { getErrorMessage } from '@/api/error';
 import { queryClient } from '@/lib/queryClient';
 import { env } from '@/config/env';
+import { useWifiValidation } from '@/hooks/useWifiValidation';
 import type { OvertimeStackParamList } from '@/navigation/types';
 
 const formatDateUTC = (date: Date) => {
@@ -174,6 +176,20 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
     queryFn: () => getOvertimes(),
   });
 
+  const {
+    isValidating,
+    wifiProofOk,
+    wifiProofError,
+    wifiSsid,
+    refreshValidation,
+  } = useWifiValidation();
+
+  useEffect(() => {
+    if (activeTab === 'new') {
+      refreshValidation();
+    }
+  }, [activeTab, refreshValidation]);
+
   const mutation = useMutation({
     mutationFn: createOvertime,
     onSuccess: () => {
@@ -234,6 +250,8 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
       return undefined;
     }
   };
+
+  const isWifiChecking = isValidating || wifiProofOk === null;
 
   const onSubmit = (values: FormValues) => {
     mutation.mutate({
@@ -317,6 +335,15 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
       {activeTab === 'new' ? (
         <Screen scroll>
           <View className="gap-4">
+            <WifiValidationCard
+              isValidating={isValidating}
+              wifiProofOk={wifiProofOk}
+              wifiProofError={wifiProofError}
+              wifiSsid={wifiSsid}
+              onRefresh={refreshValidation}
+              variant="compact"
+            />
+
             <FormSelect
               control={control}
               name="overtimeTypeId"
@@ -393,10 +420,15 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
                   ? 'Uploading...'
                   : mutation.isPending
                     ? 'Submitting...'
-                    : 'Submit Request >'
+                    : isWifiChecking
+                      ? 'Verifying Wi-Fi...'
+                      : wifiProofOk === false
+                        ? 'Wi-Fi Required'
+                        : 'Submit Request >'
               }
               onPress={handleSubmit(onSubmit)}
               loading={mutation.isPending || uploadMutation.isPending}
+              disabled={isWifiChecking || wifiProofOk !== true}
               className="mt-2"
               style={{ backgroundColor: palette.blue }}
             />

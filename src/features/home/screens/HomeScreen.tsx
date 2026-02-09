@@ -3,8 +3,26 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { Screen } from '@/ui/Screen';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabsParamList } from '@/navigation/types';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const formatIndonesianDate = (date: Date): string => {
+  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  const dayName = days[date.getDay()];
+  const day = date.getDate();
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${dayName}, ${day} ${month} ${year}`;
+};
+
+const isWeekend = (date: Date): boolean => {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+};
 
 type Props = BottomTabScreenProps<MainTabsParamList, 'Home'>;
 
@@ -29,6 +47,10 @@ export const HomeScreen = ({ navigation }: Props) => {
   };
   const floatAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
+
+  const now = useMemo(() => new Date(), []);
+  const formattedDate = useMemo(() => formatIndonesianDate(now), [now]);
+  const isWeekendDay = useMemo(() => isWeekend(now), [now]);
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -287,31 +309,32 @@ export const HomeScreen = ({ navigation }: Props) => {
             >
               <View className="flex-row items-center justify-between">
                 <Text className="text-xs font-semibold" style={{ color: palette.ink }}>
-                  Sabtu, 24 Januari 2026
+                  {formattedDate}
                 </Text>
                 <View className="flex-row items-center gap-2">
                   <View
                     className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: palette.wine }}
+                    style={{ backgroundColor: isWeekendDay ? palette.wine : palette.sky }}
                   />
                   <View
                     className="rounded-full px-2 py-0.5"
-                    style={{ backgroundColor: palette.rose }}
+                    style={{ backgroundColor: isWeekendDay ? palette.rose : '#e0f2fe' }}
                   >
                     <Text
                       className="text-[10px] font-semibold"
-                      style={{ color: palette.wine }}
+                      style={{ color: isWeekendDay ? palette.wine : '#0369a1' }}
                     >
-                      Day Off
+                      {isWeekendDay ? 'Day Off' : '08:00 - 17:00'}
                     </Text>
                   </View>
                 </View>
               </View>
 
               <View className="flex-row gap-3">
-                <View
+                <Pressable
                   className="flex-1 px-3 py-3"
                   style={{ backgroundColor: palette.ivory, borderRadius: radii.tile }}
+                  onPress={() => navigation.navigate('Attendance')}
                 >
                   <Text className="text-xs font-semibold" style={{ color: palette.ink }}>
                     Masuk
@@ -319,10 +342,11 @@ export const HomeScreen = ({ navigation }: Props) => {
                   <Text className="text-xs" style={{ color: palette.muted }}>
                     --:--
                   </Text>
-                </View>
-                <View
+                </Pressable>
+                <Pressable
                   className="flex-1 px-3 py-3"
                   style={{ backgroundColor: palette.ivory, borderRadius: radii.tile }}
+                  onPress={() => navigation.navigate('Attendance')}
                 >
                   <Text className="text-xs font-semibold" style={{ color: palette.ink }}>
                     Pulang
@@ -330,7 +354,7 @@ export const HomeScreen = ({ navigation }: Props) => {
                   <Text className="text-xs" style={{ color: palette.muted }}>
                     --:--
                   </Text>
-                </View>
+                </Pressable>
               </View>
             </View>
           </View>

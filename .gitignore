@@ -67,3 +67,6 @@ app-example
 .worktrees/
 .security-key
 logs/security/
+
+# ignore embedded repo
+htdocs/forbes-skin-app/
