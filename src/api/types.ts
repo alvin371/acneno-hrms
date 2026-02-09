@@ -158,14 +158,6 @@ export type AttendanceReport = {
   daily: AttendanceReportDay[];
 };
 
-export type Holiday = {
-  id: number;
-  date: string;
-  name: string;
-  dayName: string;
-  isHoliday: true;
-};
-
 export type OfficeConfig = {
   id: number;
   name: string;

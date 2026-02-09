@@ -9,6 +9,7 @@ type ScreenProps = {
   children: ReactNode;
   scroll?: boolean;
   className?: string;
+  style?: StyleProp<ViewStyle>;
   refreshing?: boolean;
   onRefresh?: () => void;
   safeAreaClassName?: string;
@@ -20,6 +21,7 @@ export const Screen = ({
   children,
   scroll,
   className,
+  style,
   refreshing,
   onRefresh,
   safeAreaClassName,
@@ -38,6 +40,7 @@ export const Screen = ({
             contentContainerStyle,
           ]}
           className={cn('flex-1', className)}
+          style={style}
           refreshControl={
             onRefresh ? (
               <RefreshControl
@@ -59,7 +62,7 @@ export const Screen = ({
     <SafeAreaView className="flex-1 bg-slate-50">
       <View
         className={cn('flex-1', className)}
-        style={{ padding: tokens.spacing.page }}
+        style={[{ padding: tokens.spacing.page }, style]}
       >
         {children}
       </View>

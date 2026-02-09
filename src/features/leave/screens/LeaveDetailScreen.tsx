@@ -1,5 +1,5 @@
 import { Image, Text, View, useWindowDimensions } from 'react-native';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Screen } from '@/ui/Screen';
@@ -13,7 +13,7 @@ import { showErrorModal } from '@/utils/errorModal';
 import type { LeaveStackParamList } from '@/navigation/types';
 import { env } from '@/config/env';
 
-let PdfPreview: null | ((props: any) => JSX.Element) = null;
+let PdfPreview: null | ((props: any) => React.JSX.Element) = null;
 try {
   PdfPreview = require('react-native-pdf').default;
 } catch {
