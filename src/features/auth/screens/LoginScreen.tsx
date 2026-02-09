@@ -1,4 +1,4 @@
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { useState } from 'react';
 import { z } from 'zod';
@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getErrorMessage } from '@/api/error';
 import { showToast } from '@/utils/toast';
 import { showErrorModal } from '@/utils/errorModal';
+import { logos } from '@/assets/image';
 
 const schema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
@@ -74,9 +75,10 @@ export const LoginScreen = () => {
       <View className="w-full gap-8 px-1">
         <View className="gap-4">
           <View className="flex-row items-center justify-between">
-            <View
+            <Image
+              source={logos.forbes}
               className="h-11 w-11 rounded-2xl"
-              style={{ backgroundColor: palette.ink }}
+              resizeMode="contain"
             />
             <Text
               className="text-xs uppercase tracking-[0.3em]"
@@ -110,24 +112,13 @@ export const LoginScreen = () => {
           style={{ backgroundColor: palette.white }}
         >
           <View
-            className="relative h-44 w-full overflow-hidden rounded-[28px]"
+            className="h-44 w-full items-center justify-center overflow-hidden rounded-[28px]"
             style={{ backgroundColor: palette.cream }}
           >
-            <View
-              className="absolute -left-10 top-10 h-24 w-[75%] -rotate-6 rounded-[28px]"
-              style={{ backgroundColor: palette.wine }}
-            />
-            <View
-              className="absolute -right-10 bottom-6 h-24 w-[70%] rotate-6 rounded-[28px]"
-              style={{ backgroundColor: palette.sky }}
-            />
-            <View
-              className="absolute left-6 top-6 h-12 w-12 rounded-2xl"
-              style={{ backgroundColor: palette.ink }}
-            />
-            <View
-              className="absolute right-6 top-8 h-16 w-16 rounded-full"
-              style={{ backgroundColor: 'rgba(255,255,255,0.8)' }}
+            <Image
+              source={logos.forbes}
+              className="h-28 w-28"
+              resizeMode="contain"
             />
           </View>
 

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import * as Keychain from 'react-native-keychain';
 import { Screen } from '@/ui/Screen';
 import { Button } from '@/ui/Button';
 import { PinCodeInput } from '@/ui/PinCodeInput';
 import { useAuthStore } from '@/store/authStore';
+import { logos } from '@/assets/image';
 
 const pinRegex = /^\d{6}$/;
 
@@ -69,6 +70,11 @@ export const PinUnlockScreen = () => {
   return (
     <Screen className="bg-white">
       <View className="flex-1 justify-center gap-8">
+        <Image
+          source={logos.forbes}
+          className="h-24 w-24 self-center"
+          resizeMode="contain"
+        />
         <View className="gap-2">
           <Text className="text-3xl font-black text-black text-left">
             Unlock Acneno Life

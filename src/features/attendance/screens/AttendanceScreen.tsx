@@ -482,6 +482,16 @@ export const AttendanceScreen = ({ navigation }: Props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configQuery.data]);
 
+  // Re-validate when Wi-Fi info becomes available (critical for iOS).
+  // On iOS, SSID/BSSID are only readable after location permission is granted,
+  // so the initial validation runs with null values and needs to re-run.
+  useEffect(() => {
+    if (wifiSsid || wifiBssid) {
+      refreshStatus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wifiSsid, wifiBssid]);
+
   const createPayload = (): AttendancePayload | null => {
     // If location is available, use full validation
     if (location && distanceMeters !== null) {

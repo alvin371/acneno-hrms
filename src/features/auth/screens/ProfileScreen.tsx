@@ -112,7 +112,7 @@ export const ProfileScreen = () => {
                   style={{ backgroundColor: palette.cream }}
                 >
                   <Image
-                    source={logos.green}
+                    source={logos.forbes}
                     className="h-24 w-24 rounded-full"
                     resizeMode="cover"
                   />
