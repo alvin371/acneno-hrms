@@ -29,6 +29,7 @@ import { showErrorModal } from '@/utils/errorModal';
 import { getErrorMessage } from '@/api/error';
 import { queryClient } from '@/lib/queryClient';
 import { env } from '@/config/env';
+import { openSettings } from 'react-native-permissions';
 import { useWifiValidation } from '@/hooks/useWifiValidation';
 import type { OvertimeStackParamList } from '@/navigation/types';
 
@@ -181,6 +182,7 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
     wifiProofOk,
     wifiProofError,
     wifiSsid,
+    errorCode,
     refreshValidation,
   } = useWifiValidation();
 
@@ -188,7 +190,8 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
     if (activeTab === 'new') {
       refreshValidation();
     }
-  }, [activeTab, refreshValidation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const mutation = useMutation({
     mutationFn: createOvertime,
@@ -342,6 +345,8 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
               wifiSsid={wifiSsid}
               onRefresh={refreshValidation}
               variant="compact"
+              errorCode={errorCode}
+              onOpenSettings={() => openSettings()}
             />
 
             <FormSelect

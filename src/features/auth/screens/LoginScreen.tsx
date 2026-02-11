@@ -1,18 +1,28 @@
-import { Image, Pressable, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { useState } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { login } from '@/features/auth/api';
-import { Screen } from '@/ui/Screen';
-import { FormInput } from '@/ui/FormInput';
-import { Button } from '@/ui/Button';
 import { useAuthStore } from '@/store/authStore';
 import { getErrorMessage } from '@/api/error';
 import { showToast } from '@/utils/toast';
 import { showErrorModal } from '@/utils/errorModal';
 import { logos } from '@/assets/image';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const schema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),
@@ -21,20 +31,15 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+const MAROON = '#6B1A2B';
+const INPUT_BG = '#F2F0ED';
+const MUTED = '#9CA3AF';
+const DANGER = '#dc2626';
+
 export const LoginScreen = () => {
   const setSession = useAuthStore((state) => state.setSession);
   const [showPassword, setShowPassword] = useState(false);
-  const palette = {
-    sand: '#d9d7cf',
-    cream: '#f5f2eb',
-    ivory: '#f4f1ea',
-    ink: '#111111',
-    muted: '#6b7280',
-    wine: '#b0243e',
-    sky: '#7fc4e4',
-    danger: '#dc2626',
-    white: '#ffffff',
-  };
+
   const {
     control,
     handleSubmit,
@@ -62,122 +67,95 @@ export const LoginScreen = () => {
     },
   });
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = (values: FormValues) => {
     mutation.mutate(values);
   };
 
+  const isLoading = mutation.isPending || isSubmitting;
+
   return (
-    <Screen
-      scroll
-      className="bg-transparent"
-      style={{ backgroundColor: palette.sand }}
-    >
-      <View className="w-full gap-8 px-1">
-        <View className="gap-4">
-          <View className="flex-row items-center justify-between">
-            <Image
-              source={logos.forbes}
-              className="h-11 w-11 rounded-2xl"
-              resizeMode="contain"
-            />
-            <Text
-              className="text-xs uppercase tracking-[0.3em]"
-              style={{ color: palette.ink }}
-            >
-              Acneno Life
-            </Text>
-          </View>
-          <View className="gap-2">
-            <Text
-              className="text-4xl font-black text-left"
-              style={{ color: palette.ink }}
-            >
-              Hey, Login Now.
-            </Text>
-            <View className="flex-row items-center gap-2">
-              <Text className="text-sm text-left" style={{ color: palette.muted }}>
-                If you are new
-              </Text>
-              <Pressable>
-                <Text className="text-sm font-semibold" style={{ color: palette.wine }}>
-                  Create New
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        <View
-          className="w-full gap-6 rounded-[32px] p-6"
-          style={{ backgroundColor: palette.white }}
+    <View className="flex-1" style={{ backgroundColor: MAROON }}>
+      <StatusBar barStyle="light-content" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
+      >
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
         >
+          {/* Top Section — Maroon Background */}
+          <SafeAreaView edges={['top']}>
+            <View className="items-center px-6 pb-16 pt-12">
+              <View
+                className="mb-6 h-24 w-24 items-center justify-center rounded-3xl"
+                style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+              >
+                <Image
+                  source={logos.forbes}
+                  className="h-16 w-16"
+                  resizeMode="contain"
+                />
+              </View>
+              <Text className="mb-2 text-3xl font-bold text-white">
+                Selamat Datang
+              </Text>
+              <Text
+                className="text-center text-sm"
+                style={{ color: 'rgba(255,255,255,0.7)' }}
+              >
+                Silakan masuk ke akun Anda untuk melanjutkan.
+              </Text>
+            </View>
+          </SafeAreaView>
+
+          {/* Bottom Section — White Card */}
           <View
-            className="h-44 w-full items-center justify-center overflow-hidden rounded-[28px]"
-            style={{ backgroundColor: palette.cream }}
+            className="flex-1 px-6 pb-10 pt-8"
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderTopLeftRadius: 32,
+              borderTopRightRadius: 32,
+            }}
           >
-            <Image
-              source={logos.forbes}
-              className="h-28 w-28"
-              resizeMode="contain"
-            />
-          </View>
-
-          <View className="gap-5">
-            <FormInput
-              control={control}
-              name="username"
-              label="Username"
-              placeholder="Dstudio_agency"
-              keyboardType="default"
-              labelClassName="text-xs uppercase tracking-widest"
-              inputClassName="rounded-2xl border-0"
-              containerClassName="gap-2"
-              errorClassName="text-xs"
-              labelStyle={{ color: palette.muted }}
-              inputStyle={{ backgroundColor: palette.ivory, color: palette.ink }}
-              errorStyle={{ color: palette.danger }}
-              placeholderTextColor={palette.muted}
-            />
-
+            {/* Email Field */}
             <Controller
               control={control}
-              name="password"
-              render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <View className="gap-2">
+              name="username"
+              render={({
+                field: { onChange, value },
+                fieldState: { error },
+              }) => (
+                <View className="mb-5">
                   <Text
-                    className="text-xs uppercase tracking-widest"
-                    style={{ color: palette.muted }}
+                    className="mb-2 text-xs font-semibold uppercase tracking-widest"
+                    style={{ color: MAROON }}
                   >
-                    Password
+                    Email
                   </Text>
                   <View
-                    className="flex-row items-center rounded-2xl px-4 py-3"
-                    style={{ backgroundColor: palette.ivory }}
+                    className="flex-row items-center rounded-2xl px-4 py-3.5"
+                    style={{ backgroundColor: INPUT_BG }}
                   >
                     <TextInput
                       className="flex-1 text-base"
-                      style={{ color: palette.ink }}
-                      placeholder="Enter your password"
-                      placeholderTextColor={palette.muted}
-                      value={value === undefined || value === null ? '' : String(value)}
+                      style={{ color: '#111' }}
+                      placeholder="nama@perusahaan.com"
+                      placeholderTextColor={MUTED}
+                      value={value ?? ''}
                       onChangeText={onChange}
-                      secureTextEntry={!showPassword}
-                      textAlignVertical="center"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
                     />
-                    <Pressable
-                      onPress={() => setShowPassword((prev) => !prev)}
-                      className="px-2 py-1"
-                    >
-                      <Text
-                        className="text-xs font-semibold"
-                        style={{ color: palette.wine }}
-                      >
-                        {showPassword ? 'Hide' : 'Show'}
-                      </Text>
-                    </Pressable>
+                    <Ionicons name="mail-outline" size={20} color={MUTED} />
                   </View>
                   {error ? (
-                    <Text className="text-xs" style={{ color: palette.danger }}>
+                    <Text
+                      className="mt-1 text-xs"
+                      style={{ color: DANGER }}
+                    >
                       {error.message}
                     </Text>
                   ) : null}
@@ -185,33 +163,121 @@ export const LoginScreen = () => {
               )}
             />
 
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs" style={{ color: palette.muted }}>
-                Forgot Passcode?
+            {/* Password Field */}
+            <Controller
+              control={control}
+              name="password"
+              render={({
+                field: { onChange, value },
+                fieldState: { error },
+              }) => (
+                <View className="mb-3">
+                  <Text
+                    className="mb-2 text-xs font-semibold uppercase tracking-widest"
+                    style={{ color: MAROON }}
+                  >
+                    Password
+                  </Text>
+                  <View
+                    className="flex-row items-center rounded-2xl px-4 py-3.5"
+                    style={{ backgroundColor: INPUT_BG }}
+                  >
+                    <TextInput
+                      className="flex-1 text-base"
+                      style={{ color: '#111' }}
+                      placeholder="Enter your password"
+                      placeholderTextColor={MUTED}
+                      value={value ?? ''}
+                      onChangeText={onChange}
+                      secureTextEntry={!showPassword}
+                    />
+                    <Pressable
+                      onPress={() => setShowPassword((prev) => !prev)}
+                      hitSlop={8}
+                    >
+                      <Ionicons
+                        name={
+                          showPassword
+                            ? 'lock-open-outline'
+                            : 'lock-closed-outline'
+                        }
+                        size={20}
+                        color={MUTED}
+                      />
+                    </Pressable>
+                  </View>
+                  {error ? (
+                    <Text
+                      className="mt-1 text-xs"
+                      style={{ color: DANGER }}
+                    >
+                      {error.message}
+                    </Text>
+                  ) : null}
+                </View>
+              )}
+            />
+
+            {/* Forgot Password */}
+            <Pressable className="mb-6 self-end">
+              <Text className="text-sm font-semibold" style={{ color: MAROON }}>
+                Lupa Password?
               </Text>
-              <Pressable>
-                <Text
-                  className="text-xs font-semibold"
-                  style={{ color: palette.wine }}
-                >
-                  Reset
-                </Text>
-              </Pressable>
+            </Pressable>
+
+            {/* Login Button */}
+            <Pressable
+              onPress={handleSubmit(onSubmit)}
+              disabled={isLoading}
+              className="mb-8 items-center justify-center rounded-2xl py-4"
+              style={{
+                backgroundColor: MAROON,
+                opacity: isLoading ? 0.7 : 1,
+                shadowColor: MAROON,
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.35,
+                shadowRadius: 10,
+                elevation: 8,
+              }}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-base font-bold text-white">Masuk</Text>
+              )}
+            </Pressable>
+
+            {/* Divider */}
+            <View className="mb-6 flex-row items-center">
+              <View
+                className="h-px flex-1"
+                style={{ backgroundColor: '#E5E7EB' }}
+              />
+              <Text className="mx-4 text-xs" style={{ color: MUTED }}>
+                Atau masuk dengan
+              </Text>
+              <View
+                className="h-px flex-1"
+                style={{ backgroundColor: '#E5E7EB' }}
+              />
             </View>
 
-            <Button
-              label={
-                mutation.isPending || isSubmitting ? 'Signing in...' : 'Login'
-              }
-              onPress={handleSubmit(onSubmit)}
-              loading={mutation.isPending}
-              className="rounded-2xl"
-              style={{ backgroundColor: palette.wine }}
-              labelStyle={{ color: palette.white }}
-            />
+            {/* Biometric Button */}
+            <View className="items-center">
+              <Pressable
+                className="h-14 w-14 items-center justify-center rounded-full"
+                style={{ borderWidth: 1.5, borderColor: '#E5E7EB' }}
+              >
+                <Ionicons
+                  name="finger-print-outline"
+                  size={28}
+                  color={MAROON}
+                />
+              </Pressable>
+            </View>
           </View>
-        </View>
-      </View>
-    </Screen>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 };

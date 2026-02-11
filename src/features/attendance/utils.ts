@@ -1,5 +1,45 @@
 import type { AttendanceReport } from '@/api/types';
 
+export const isSameDay = (left: Date, right: Date) =>
+  left.getFullYear() === right.getFullYear() &&
+  left.getMonth() === right.getMonth() &&
+  left.getDate() === right.getDate();
+
+export type AttendanceBadge = {
+  label: string;
+  bgColor: string;
+  textColor: string;
+};
+
+export const computeAttendanceBadge = (
+  checkInTime: Date | null,
+  checkOutTime: Date | null,
+): AttendanceBadge | null => {
+  if (!checkInTime && !checkOutTime) {
+    return null;
+  }
+
+  // Check-out status overrides check-in status
+  if (checkOutTime) {
+    if (checkOutTime.getHours() < 17) {
+      return { label: 'Pulang Awal', bgColor: '#fef3c7', textColor: '#d97706' };
+    }
+    return { label: 'On Time', bgColor: '#d1fae5', textColor: '#10b981' };
+  }
+
+  // Check-in only
+  if (checkInTime) {
+    const hour = checkInTime.getHours();
+    const minute = checkInTime.getMinutes();
+    if (hour < 8 || (hour === 8 && minute <= 14)) {
+      return { label: 'On Time', bgColor: '#d1fae5', textColor: '#10b981' };
+    }
+    return { label: 'Terlambat', bgColor: '#fee2e2', textColor: '#ef4444' };
+  }
+
+  return null;
+};
+
 export const parseServerDateTime = (value?: string | null) => {
   if (!value) {
     return null;

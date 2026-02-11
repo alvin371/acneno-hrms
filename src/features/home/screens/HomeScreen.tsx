@@ -1,499 +1,516 @@
-import { Animated, Pressable, Text, View } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '@/ui/Screen';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { MainTabsParamList } from '@/navigation/types';
-import { useEffect, useMemo, useRef } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useTodayAttendance } from '@/features/attendance/hooks/useTodayAttendance';
+import { computeAttendanceBadge } from '@/features/attendance/utils';
 
-const formatIndonesianDate = (date: Date): string => {
-  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const months = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
-  const dayName = days[date.getDay()];
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-  return `${dayName}, ${day} ${month} ${year}`;
+const WINE = '#a3253b';
+
+const getGreeting = (): string => {
+  const hour = new Date().getHours();
+  if (hour < 11) return 'Selamat Pagi,';
+  if (hour < 15) return 'Selamat Siang,';
+  if (hour < 18) return 'Selamat Sore,';
+  return 'Selamat Malam,';
 };
 
-const isWeekend = (date: Date): boolean => {
-  const day = date.getDay();
-  return day === 0 || day === 6;
+const formatDateUppercase = (date: Date): string => {
+  const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'];
+  return `${days[date.getDay()]}, ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+};
+
+const getCurrentTime = (date: Date): string => {
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+};
+
+const getInitials = (name: string): string => {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+const MENU_ITEMS = [
+  { id: 'absensi', label: 'Absensi', subtitle: 'Log harian', color: '#8bbfda', iconName: 'calendar-outline', route: 'Attendance' as const },
+  { id: 'cuti', label: 'Cuti', subtitle: 'Pengajuan', color: '#86efac', iconName: 'clipboard-outline', route: 'Leave' as const },
+  { id: 'slip', label: 'Slip Gaji', subtitle: 'Detail', color: '#fda4af', iconName: 'document-text-outline', route: null },
+  { id: 'performance', label: 'Performance', subtitle: 'Penilaian', color: '#fbbf24', iconName: 'trending-up-outline', route: 'Performance' as const },
+  { id: 'lembur', label: 'Lembur', subtitle: 'Pengajuan', color: '#a78bfa', iconName: 'time-outline', route: 'Overtime' as const },
+  { id: 'karyawan', label: 'Karyawan', subtitle: 'Direktori', color: '#fb923c', iconName: 'people-outline', route: null },
+];
+
+const NEWS_ITEMS = [
+  {
+    id: '1',
+    badge: 'Internal' as const,
+    title: 'Company Townhall Meeting Q1 2026',
+    desc: 'Pembahasan strategi tahunan dan...',
+    date: '10 Feb 2026',
+    imageBg: '#e8e0d8',
+  },
+  {
+    id: '2',
+    badge: 'Event' as const,
+    title: 'Workshop: Digital Wellbeing',
+    desc: 'Meningkatkan produktivitas tanpa...',
+    date: '08 Feb 2026',
+    imageBg: '#d1e8d5',
+  },
+];
+
+const BADGE_STYLES = {
+  Internal: { bg: '#fee2e2', text: '#ef4444' },
+  Event: { bg: '#d1fae5', text: '#10b981' },
 };
 
 type Props = BottomTabScreenProps<MainTabsParamList, 'Home'>;
 
-export const HomeScreen = ({ navigation }: Props) => {
-  const palette = {
-    sand: '#d4d0c6',
-    cream: '#f6f2ea',
-    ivory: '#f1ece2',
-    ink: '#1a1a1a',
-    muted: '#6a6a66',
-    wine: '#a3253b',
-    rose: '#f4d7dd',
-    sky: '#8bbfda',
-    white: '#ffffff',
-    divider: '#e6e0d6',
-    cardBorder: '#f3eee4',
-  };
-  const radii = {
-    hero: 36,
-    card: 28,
-    tile: 20,
-  };
-  const floatAnim = useRef(new Animated.Value(0)).current;
-  const insets = useSafeAreaInsets();
+const formatHHMM = (date: Date): string => {
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+};
 
-  const now = useMemo(() => new Date(), []);
-  const formattedDate = useMemo(() => formatIndonesianDate(now), [now]);
-  const isWeekendDay = useMemo(() => isWeekend(now), [now]);
+export const HomeScreen = ({ navigation }: Props) => {
+  const user = useAuthStore(s => s.user);
+  const [now, setNow] = useState(() => new Date());
+  const greeting = useMemo(() => getGreeting(), []);
+  const formattedDate = useMemo(() => formatDateUppercase(now), [now]);
+  const currentTime = useMemo(() => getCurrentTime(now), [now]);
+  const initials = useMemo(() => getInitials(user?.name ?? 'U'), [user?.name]);
+
+  const { checkInTime, checkOutTime } = useTodayAttendance();
+  const badge = useMemo(() => computeAttendanceBadge(checkInTime, checkOutTime), [checkInTime, checkOutTime]);
 
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: 1,
-          duration: 3200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 3200,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [floatAnim]);
-
-  const floatUp = floatAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 8],
-  });
-
-  const ShortcutIcon = ({
-    name,
-    color,
-  }: {
-    name:
-      | 'absensi'
-      | 'cuti'
-      | 'slip'
-      | 'performance'
-      | 'overtime'
-      | 'employee';
-    color: string;
-  }) => {
-    switch (name) {
-      case 'absensi':
-        return (
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-            <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={2} />
-            <Path
-              d="M12 7v5l3 3"
-              stroke={color}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </Svg>
-        );
-      case 'cuti':
-        return (
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-            <Rect
-              x="4"
-              y="6"
-              width="16"
-              height="14"
-              rx="3"
-              stroke={color}
-              strokeWidth={2}
-            />
-            <Path
-              d="M8 4h8"
-              stroke={color}
-              strokeWidth={2}
-              strokeLinecap="round"
-            />
-            <Path
-              d="M8 12h8M8 16h5"
-              stroke={color}
-              strokeWidth={2}
-              strokeLinecap="round"
-            />
-          </Svg>
-        );
-      case 'slip':
-        return (
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-            <Rect
-              x="5"
-              y="3"
-              width="14"
-              height="18"
-              rx="3"
-              stroke={color}
-              strokeWidth={2}
-            />
-            <Path
-              d="M8 8h8M8 12h8M8 16h5"
-              stroke={color}
-              strokeWidth={2}
-              strokeLinecap="round"
-            />
-          </Svg>
-        );
-      case 'performance':
-        return (
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-            <Path
-              d="M4 17l5-5 4 4 7-7"
-              stroke={color}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <Circle cx="9" cy="12" r="1.6" fill={color} />
-            <Circle cx="13" cy="16" r="1.6" fill={color} />
-          </Svg>
-        );
-      case 'overtime':
-        return (
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-            <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={2} />
-            <Path
-              d="M12 7v5l3 3"
-              stroke={color}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <Path
-              d="M17 7h2M18 6v2"
-              stroke={color}
-              strokeWidth={2}
-              strokeLinecap="round"
-            />
-          </Svg>
-        );
-      case 'employee':
-        return (
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-            <Circle cx="12" cy="8" r="3.5" stroke={color} strokeWidth={2} />
-            <Path
-              d="M5 19c1.8-3 11.2-3 14 0"
-              stroke={color}
-              strokeWidth={2}
-              strokeLinecap="round"
-            />
-          </Svg>
-        );
-      default:
-        return null;
-    }
-  };
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <Screen
       scroll
-      className="bg-transparent"
-      style={{ backgroundColor: palette.sand }}
-      safeAreaStyle={{ backgroundColor: palette.sand }}
-      contentContainerStyle={{ paddingTop: 0 }}
+      style={{ backgroundColor: '#f5f5f5' }}
+      safeAreaStyle={{ backgroundColor: WINE }}
+      contentContainerStyle={{ paddingTop: 0, paddingHorizontal: 0, padding: 0, paddingBottom: 100 }}
     >
-      <View className="gap-6">
-        <View className="absolute left-0 right-0 top-0 h-[420px] overflow-hidden">
-          <View
-            className="absolute -top-12 left-[-80px] h-56 w-56 rounded-full"
-            style={{ backgroundColor: 'rgba(255,255,255,0.16)' }}
-          />
-          <View
-            className="absolute -top-6 right-[-60px] h-40 w-40 rounded-full"
-            style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}
-          />
-          <View
-            className="absolute top-36 left-10 h-24 w-24 rounded-full"
-            style={{ backgroundColor: 'rgba(163,37,59,0.08)' }}
-          />
-        </View>
-        <View className="relative px-4 pt-8">
-          <View
-            className="absolute left-0 right-0 top-0"
-            style={{ height: insets.top, backgroundColor: palette.wine }}
-          />
-          <View
-            className="absolute top-0 h-56 rounded-b-[36px]"
-            style={{
-              backgroundColor: palette.wine,
-              left: -16,
-              right: -16,
-              borderBottomLeftRadius: radii.hero,
-              borderBottomRightRadius: radii.hero,
-            }}
-          />
-          <Animated.View
-            className="absolute -right-6 bottom-6 h-28 w-28 rounded-full"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.12)',
-              transform: [{ translateY: floatUp }],
-            }}
-          />
-          <Animated.View
-            className="absolute -left-10 bottom-10 h-20 w-20 rounded-full"
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.16)',
-              transform: [{ translateY: floatUp }],
-            }}
-          />
-          <View className="absolute left-0 right-0 bottom-0 h-24 overflow-hidden">
-            <Svg width="100%" height="100%" viewBox="0 0 360 96">
-              <Path
-                d="M0,48 C40,20 80,8 120,12 C160,16 200,36 240,44 C280,52 320,52 360,40 L360,96 L0,96 Z"
-                fill="rgba(255,255,255,0.09)"
-              />
-            </Svg>
-          </View>
-          <View className="gap-4">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center gap-3">
-                <View
-                  className="h-10 w-10 items-center justify-center rounded-full"
-                  style={{ backgroundColor: palette.white }}
-                >
-                  <Text className="text-xs font-semibold" style={{ color: palette.wine }}>
-                    A
-                  </Text>
-                </View>
-                <View>
-                  <Text className="text-xs" style={{ color: 'rgba(255,255,255,0.8)' }}>
-                    Selamat Datang
-                  </Text>
-                  <Text className="text-base font-semibold" style={{ color: palette.white }}>
-                    Alvin
-                  </Text>
-                </View>
+      {/* Header */}
+      <View style={s.header}>
+        <View style={s.headerContent}>
+          <View style={s.headerRow}>
+            <View style={s.headerLeft}>
+              <View style={s.avatar}>
+                <Text style={s.avatarText}>{initials}</Text>
               </View>
-              <View
-                className="flex-row items-center gap-2 rounded-full px-3 py-1"
-                style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
-              >
-                <View
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: palette.sky }}
-                />
-                <Text className="text-xs font-semibold" style={{ color: palette.white }}>
-                  Jakarta Office
-                </Text>
-              </View>
-            </View>
-
-            <View
-              className="gap-5 p-5"
-              style={{
-                backgroundColor: palette.white,
-                borderRadius: radii.card,
-                borderWidth: 1,
-                borderColor: palette.cardBorder,
-                shadowColor: palette.ink,
-                shadowOpacity: 0.12,
-                shadowRadius: 18,
-                shadowOffset: { width: 0, height: 10 },
-                elevation: 6,
-              }}
-            >
-              <View className="flex-row items-center justify-between">
-                <Text className="text-xs font-semibold" style={{ color: palette.ink }}>
-                  {formattedDate}
-                </Text>
-                <View className="flex-row items-center gap-2">
-                  <View
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: isWeekendDay ? palette.wine : palette.sky }}
-                  />
-                  <View
-                    className="rounded-full px-2 py-0.5"
-                    style={{ backgroundColor: isWeekendDay ? palette.rose : '#e0f2fe' }}
-                  >
-                    <Text
-                      className="text-[10px] font-semibold"
-                      style={{ color: isWeekendDay ? palette.wine : '#0369a1' }}
-                    >
-                      {isWeekendDay ? 'Day Off' : '08:00 - 17:00'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View className="flex-row gap-3">
-                <Pressable
-                  className="flex-1 px-3 py-3"
-                  style={{ backgroundColor: palette.ivory, borderRadius: radii.tile }}
-                  onPress={() => navigation.navigate('Attendance')}
-                >
-                  <Text className="text-xs font-semibold" style={{ color: palette.ink }}>
-                    Masuk
-                  </Text>
-                  <Text className="text-xs" style={{ color: palette.muted }}>
-                    --:--
-                  </Text>
-                </Pressable>
-                <Pressable
-                  className="flex-1 px-3 py-3"
-                  style={{ backgroundColor: palette.ivory, borderRadius: radii.tile }}
-                  onPress={() => navigation.navigate('Attendance')}
-                >
-                  <Text className="text-xs font-semibold" style={{ color: palette.ink }}>
-                    Pulang
-                  </Text>
-                  <Text className="text-xs" style={{ color: palette.muted }}>
-                    --:--
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        <View className="gap-4 px-4">
-          <View
-            className="rounded-3xl p-4"
-            style={{
-              backgroundColor: palette.white,
-              borderRadius: radii.card,
-              borderWidth: 1,
-              borderColor: palette.cardBorder,
-              shadowColor: palette.ink,
-              shadowOpacity: 0.1,
-              shadowRadius: 16,
-              shadowOffset: { width: 0, height: 8 },
-              elevation: 5,
-            }}
-          >
-            <View className="flex-row flex-wrap justify-between">
-              {([
-                {
-                  label: 'Absensi',
-                  icon: 'absensi' as const,
-                  onPress: () => navigation.navigate('Attendance'),
-                },
-                {
-                  label: 'Cuti',
-                  icon: 'cuti' as const,
-                  onPress: () => navigation.navigate('Leave'),
-                },
-                { label: 'Slip Gaji', icon: 'slip' as const },
-                {
-                  label: 'Performance',
-                  icon: 'performance' as const,
-                  onPress: () => navigation.navigate('Performance'),
-                },
-                { label: 'Lembur', icon: 'overtime' as const, onPress: () => navigation.navigate('Overtime') },
-                { label: 'Karyawan', icon: 'employee' as const },
-              ]).map((item) => (
-                <Pressable
-                  key={item.label}
-                  onPress={item.onPress}
-                  className="mb-6 w-[30%] items-center gap-2"
-                >
-                  <View className="items-center gap-2">
-                    <View
-                      className="h-12 w-12 items-center justify-center rounded-full"
-                      style={{ backgroundColor: palette.cream }}
-                    >
-                      <ShortcutIcon name={item.icon} color={palette.wine} />
-                    </View>
-                    <Text className="text-xs text-center" style={{ color: palette.muted }}>
-                      {item.label}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-            <View
-              className="flex-row items-center justify-between px-4 py-3"
-              style={{
-                backgroundColor: palette.cream,
-                borderRadius: radii.card,
-              }}
-            >
               <View>
-                <Text className="text-xs" style={{ color: palette.muted }}>
-                  Status Berikutnya
-                </Text>
-                <Text className="text-sm font-semibold" style={{ color: palette.ink }}>
-                  Payroll cut-off 3 hari lagi
-                </Text>
-              </View>
-              <View
-                className="rounded-full px-3 py-1"
-                style={{ backgroundColor: palette.white, borderColor: palette.rose, borderWidth: 1 }}
-              >
-                <Text className="text-xs font-semibold" style={{ color: palette.wine }}>
-                  Lihat
-                </Text>
+                <Text style={s.greetingText}>{greeting}</Text>
+                <Text style={s.nameText}>{user?.name ?? 'User'}</Text>
               </View>
             </View>
-
-          <View
-            className="gap-4 p-5"
-            style={{
-              backgroundColor: palette.white,
-              borderRadius: radii.card,
-              borderWidth: 1,
-              borderColor: palette.cardBorder,
-              shadowColor: palette.ink,
-              shadowOpacity: 0.1,
-              shadowRadius: 16,
-              shadowOffset: { width: 0, height: 8 },
-              elevation: 5,
-            }}
-          >
-            <View className="flex-row items-center justify-between">
-              <Text className="text-base font-semibold" style={{ color: palette.ink }}>
-                Pengumuman
-              </Text>
-              <Pressable>
-                <Text className="text-xs font-semibold" style={{ color: palette.wine }}>
-                  Lihat Semua
-                </Text>
-              </Pressable>
-            </View>
-            <View className="gap-4">
-              <View className="gap-1">
-                <Text className="text-sm font-semibold" style={{ color: palette.ink }}>
-                  Memperingati Hari Isra Mi'raj Nabi Muhammad SAW
-                </Text>
-                <Text className="text-xs" style={{ color: palette.muted }}>
-                  Dear Acneno Team, dalam rangka memperingati Hari Isra Mi'raj.
-                </Text>
-                <Text className="text-[10px]" style={{ color: palette.muted }}>
-                  1 minggu yang lalu
-                </Text>
-              </View>
-              <View className="h-px w-full" style={{ backgroundColor: palette.divider }} />
-              <View className="gap-1">
-                <Text className="text-sm font-semibold" style={{ color: palette.ink }}>
-                  Selamat Natal & Tahun Baru 2026
-                </Text>
-                <Text className="text-xs" style={{ color: palette.muted }}>
-                  Selamat Natal dan Tahun Baru 2026 untuk semua.
-                </Text>
-                <Text className="text-[10px]" style={{ color: palette.muted }}>
-                  4 minggu yang lalu
-                </Text>
-              </View>
+            <View style={s.bellCircle}>
+              <Ionicons name="notifications-outline" size={20} color="#1a1a1a" />
             </View>
           </View>
+        </View>
+        {/* Rounded bottom curve */}
+        <View style={s.headerCurve} />
+      </View>
+
+      {/* Attendance Card */}
+      <View style={s.attendanceCard}>
+        <View style={s.attendanceTopRow}>
+          <Text style={s.dateText}>{formattedDate}</Text>
+          {badge && (
+            <View style={[s.statusBadge, { backgroundColor: badge.bgColor }]}>
+              <Text style={[s.statusBadgeText, { color: badge.textColor }]}>{badge.label}</Text>
+            </View>
+          )}
+        </View>
+        <Text style={s.timeText}>{currentTime}</Text>
+        <Text style={s.scheduleText}>Jadwal Kerja: 08:00 - 17:00</Text>
+        <View style={s.btnRow}>
+          <Pressable
+            style={[s.masukBtn, checkInTime && { opacity: 0.7 }]}
+            onPress={() => navigation.navigate('Attendance')}
+          >
+            <View style={s.masukBtnInner}>
+              <View style={s.masukIconCircle}>
+                <Ionicons name={checkInTime ? 'checkmark' : 'arrow-forward'} size={14} color="#fff" />
+              </View>
+              <View>
+                <Text style={s.masukBtnText}>Masuk</Text>
+                {checkInTime && <Text style={s.btnTimeText}>{formatHHMM(checkInTime)}</Text>}
+              </View>
+            </View>
+          </Pressable>
+          <Pressable
+            style={[s.pulangBtn, checkOutTime && { opacity: 0.7 }]}
+            onPress={() => navigation.navigate('Attendance')}
+          >
+            <View style={s.pulangBtnInner}>
+              <View style={s.pulangIconCircle}>
+                <Ionicons name={checkOutTime ? 'checkmark' : 'arrow-forward'} size={14} color={WINE} />
+              </View>
+              <View>
+                <Text style={s.pulangBtnText}>Pulang</Text>
+                {checkOutTime && <Text style={s.btnTimeTextOutline}>{formatHHMM(checkOutTime)}</Text>}
+              </View>
+            </View>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Menu Utama */}
+      <View style={s.menuSection}>
+        <Text style={s.sectionTitle}>Menu Utama</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.menuScroll}
+        >
+          {MENU_ITEMS.map(item => (
+            <Pressable
+              key={item.id}
+              style={s.menuItem}
+              onPress={() => {
+                if (item.route) navigation.navigate(item.route);
+              }}
+            >
+              <View style={[s.menuCircle, { backgroundColor: item.color }]}>
+                <Ionicons name={item.iconName} size={26} color="#fff" />
+              </View>
+              <Text style={s.menuLabel}>{item.label}</Text>
+              <Text style={s.menuSubtitle}>{item.subtitle}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* News & Updates */}
+      <View style={s.newsSection}>
+        <View style={s.newsTitleRow}>
+          <Text style={s.newsSectionTitle}>News & Updates</Text>
+          <Pressable>
+            <Text style={s.lihatSemua}>Lihat Semua</Text>
+          </Pressable>
+        </View>
+        <View style={s.newsCards}>
+          {NEWS_ITEMS.map(item => {
+            const badge = BADGE_STYLES[item.badge];
+            return (
+              <View key={item.id} style={s.newsCard}>
+                <View style={[s.newsImage, { backgroundColor: item.imageBg }]} />
+                <View style={s.newsContent}>
+                  <View style={[s.newsBadge, { backgroundColor: badge.bg }]}>
+                    <Text style={[s.newsBadgeText, { color: badge.text }]}>{item.badge}</Text>
+                  </View>
+                  <Text style={s.newsTitle} numberOfLines={2}>{item.title}</Text>
+                  <Text style={s.newsDesc} numberOfLines={1}>{item.desc}</Text>
+                  <Text style={s.newsDate}>{item.date}</Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
       </View>
     </Screen>
   );
 };
+
+const s = StyleSheet.create({
+  // Header
+  header: {
+    backgroundColor: WINE,
+    paddingBottom: 28,
+  },
+  headerContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 36,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: WINE,
+  },
+  greetingText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  nameText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  bellCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCurve: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 28,
+    backgroundColor: '#f5f5f5',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+  },
+
+  // Attendance Card
+  attendanceCard: {
+    marginTop: -56,
+    marginHorizontal: 16,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  attendanceTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  dateText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  statusBadge: {
+    borderRadius: 99,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  timeText: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginVertical: 4,
+  },
+  scheduleText: {
+    fontSize: 13,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  masukBtn: {
+    flex: 1,
+    backgroundColor: WINE,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  masukBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  masukIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  masukBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  pulangBtn: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: WINE,
+  },
+  pulangBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pulangIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(163,37,59,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pulangBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: WINE,
+  },
+  btnTimeText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+  },
+  btnTimeTextOutline: {
+    fontSize: 11,
+    color: WINE,
+    opacity: 0.7,
+    textAlign: 'center',
+  },
+
+  // Menu Utama
+  menuSection: {
+    marginTop: 28,
+    gap: 14,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    paddingHorizontal: 16,
+  },
+  menuScroll: {
+    paddingHorizontal: 16,
+    gap: 20,
+  },
+  menuItem: {
+    width: 80,
+    alignItems: 'center',
+    gap: 4,
+  },
+  menuCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  menuLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    textAlign: 'center',
+  },
+  menuSubtitle: {
+    fontSize: 11,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+
+  // News & Updates
+  newsSection: {
+    marginTop: 28,
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  newsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  newsSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  lihatSemua: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: WINE,
+  },
+  newsCards: {
+    gap: 12,
+  },
+  newsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: 'row',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  newsImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+  },
+  newsContent: {
+    flex: 1,
+    gap: 3,
+  },
+  newsBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: 99,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  newsBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  newsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  newsDesc: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  newsDate: {
+    fontSize: 11,
+    color: '#9ca3af',
+  },
+});

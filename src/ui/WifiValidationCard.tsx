@@ -1,6 +1,33 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { cn } from '@/utils/cn';
+import type { WifiErrorCode } from '@/hooks/useWifiValidation';
+
+const SETTINGS_ERROR_CODES: WifiErrorCode[] = [
+  'permission_location',
+  'permission_wifi',
+  'ssid_unreadable',
+  'bssid_unreadable',
+];
+
+const ERROR_HINTS: Record<WifiErrorCode, string> = {
+  permission_location:
+    'Enable location access in your device settings to verify Wi-Fi.',
+  permission_wifi: 'Enable Wi-Fi access in your device settings.',
+  not_connected: 'Connect to your office Wi-Fi network and try again.',
+  ssid_unreadable:
+    'Turn on Wi-Fi and location services, then try again.',
+  bssid_unreadable:
+    'Turn on Wi-Fi and location services, then try again.',
+  ssid_mismatch: 'Connect to your office Wi-Fi network and try again.',
+  bssid_mismatch:
+    "Make sure you're connected to the correct office Wi-Fi.",
+  not_configured:
+    'Contact your administrator to configure office Wi-Fi.',
+  proof_failed: 'Try again or contact your administrator.',
+  api_error: 'Check your internet connection and try again.',
+  timeout: 'Check your connection and try again.',
+};
 
 type WifiValidationCardProps = {
   isValidating: boolean;
@@ -9,6 +36,8 @@ type WifiValidationCardProps = {
   wifiSsid: string | null;
   onRefresh: () => void;
   variant?: 'default' | 'compact';
+  errorCode?: WifiErrorCode | null;
+  onOpenSettings?: () => void;
 };
 
 const CheckIcon = ({ color }: { color: string }) => (
@@ -42,6 +71,8 @@ export const WifiValidationCard = ({
   wifiSsid,
   onRefresh,
   variant = 'default',
+  errorCode,
+  onOpenSettings,
 }: WifiValidationCardProps) => {
   const isChecking = isValidating || wifiProofOk === null;
   const isVerified = !isChecking && wifiProofOk === true;
@@ -102,26 +133,51 @@ export const WifiValidationCard = ({
                 {wifiProofError}
               </Text>
             ) : null}
+            {isFailed && errorCode && ERROR_HINTS[errorCode] ? (
+              <Text
+                className={cn(
+                  variant === 'compact' ? 'text-xs' : 'text-sm',
+                  'text-rose-600 opacity-70 mt-0.5'
+                )}
+              >
+                {ERROR_HINTS[errorCode]}
+              </Text>
+            ) : null}
           </View>
         </View>
-        <Pressable
-          onPress={onRefresh}
-          disabled={isChecking}
-          className={cn(
-            'rounded-lg border px-3 py-1',
-            isChecking ? 'border-slate-200' : 'border-slate-300',
-            isChecking ? 'opacity-60' : 'opacity-100'
-          )}
-        >
-          <Text
+        <View className="flex-col gap-1.5">
+          {isFailed &&
+          errorCode &&
+          SETTINGS_ERROR_CODES.includes(errorCode) &&
+          onOpenSettings ? (
+            <Pressable
+              onPress={onOpenSettings}
+              className="rounded-lg border border-rose-300 px-3 py-1"
+            >
+              <Text className="text-xs font-semibold text-rose-700">
+                Open Settings
+              </Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={onRefresh}
+            disabled={isChecking}
             className={cn(
-              'text-xs font-semibold',
-              isChecking ? 'text-slate-500' : 'text-slate-700'
+              'rounded-lg border px-3 py-1',
+              isChecking ? 'border-slate-200' : 'border-slate-300',
+              isChecking ? 'opacity-60' : 'opacity-100'
             )}
           >
-            Refresh
-          </Text>
-        </Pressable>
+            <Text
+              className={cn(
+                'text-xs font-semibold',
+                isChecking ? 'text-slate-500' : 'text-slate-700'
+              )}
+            >
+              Refresh
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );

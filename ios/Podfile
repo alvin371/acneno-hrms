@@ -40,15 +40,34 @@ target 'HrManagementSystem' do
       # :ccache_enabled => true
     )
 
-    # Disable User Script Sandboxing to fix build issues with Xcode 15+
+    # Disable User Script Sandboxing (Xcode 15+) and Explicit Modules
+    # (Xcode 16+) to fix RCTSwiftUI.modulemap not found during builds.
+    # Both Swift and Clang explicit modules must be disabled because the
+    # dependency scanner runs before SPM packages are built.
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+        config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+        config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
       end
     end
 
     installer.pods_project.build_configurations.each do |config|
       config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+      config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+      config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
+    end
+
+    # Strip SPM module map refs from the MAIN APP xcconfig only.
+    # These reference files inside DerivedData that don't exist until
+    # SPM packages build. Individual Pod target xcconfigs are left intact.
+    Dir.glob(File.join(installer.sandbox.root, 'Target Support Files',
+             'Pods-HrManagementSystem', '*.xcconfig')).each do |xcconfig_path|
+      xcconfig = File.read(xcconfig_path)
+      xcconfig.gsub!(%r{-Xcc -fmodule-map-file="\$\{PODS_CONFIGURATION_BUILD_DIR\}/[^"]*"}, '')
+      xcconfig.gsub!(%r{-fmodule-map-file="\$\{PODS_CONFIGURATION_BUILD_DIR\}/[^"]*"}, '')
+      xcconfig.gsub!(/  +/, ' ')
+      File.write(xcconfig_path, xcconfig)
     end
   end
 end
