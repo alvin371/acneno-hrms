@@ -9,6 +9,7 @@ import { RootNavigator } from '@/navigation/RootNavigator';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/store/authStore';
 import { ErrorModal } from '@/ui/ErrorModal';
+import { AttendanceReminderBootstrap } from '@/features/notifications/bootstrap';
 
 NetInfo.configure({ shouldFetchWiFiSSID: true });
 
@@ -24,6 +25,7 @@ const App = () => {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <StatusBar barStyle="dark-content" />
+          <AttendanceReminderBootstrap />
           <RootNavigator />
           <ErrorModal />
           <Toast />

@@ -9,6 +9,12 @@ export type MainTabsParamList = {
   Performance: undefined;
   Profile: undefined;
   Overtime: undefined;
+  Approvals: undefined;
+  Notifications: undefined;
+};
+
+export type NotificationsStackParamList = {
+  NotificationsList: undefined;
 };
 
 export type AttendanceStackParamList = {
@@ -19,6 +25,9 @@ export type AttendanceStackParamList = {
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   ProfileEdit: undefined;
+  EditPassword: undefined;
+  Config: undefined;
+  NotificationSettings: undefined;
 };
 
 export type LeaveStackParamList = {
@@ -36,4 +45,9 @@ export type PerformanceStackParamList = {
 export type OvertimeStackParamList = {
   OvertimeRequest: undefined;
   OvertimeDetail: { id: number };
+};
+
+export type ApprovalStackParamList = {
+  ApprovalsList: undefined;
+  ApprovalDetail: { stepId: number; module: 'leave' | 'overtime' };
 };
