@@ -1,0 +1,52 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "react-perf"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    "ios/",
+    "android/",
+    "htdocs/",
+    "babel.config.js",
+    "metro.config.js",
+    "jest.config.js"
+  ],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2024": true
+  },
+  "globals": {
+    "__DEV__": "readonly",
+    "Alert": "readonly",
+    "AbortController": "readonly",
+    "clearInterval": "readonly",
+    "clearTimeout": "readonly",
+    "cancelAnimationFrame": "readonly",
+    "fetch": "readonly",
+    "FormData": "readonly",
+    "global": "readonly",
+    "Headers": "readonly",
+    "module": "readonly",
+    "process": "readonly",
+    "requestAnimationFrame": "readonly",
+    "require": "readonly",
+    "setInterval": "readonly",
+    "setTimeout": "readonly",
+    "URL": "readonly"
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "destructuredArrayIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ]
+  }
+}

@@ -54,6 +54,11 @@ ios/.xcode.env.local
 
 # typescript
 *.tsbuildinfo
+# Shadow JS/d.ts from accidental `tsc <file>` runs — see scripts/check-no-shadow-js.mjs
+src/**/*.js
+src/**/*.jsx
+src/**/*.d.ts
+!src/types/**/*.d.ts
 
 app-example
 

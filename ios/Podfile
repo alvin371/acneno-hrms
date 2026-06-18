@@ -49,6 +49,13 @@ target 'HrManagementSystem' do
         config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
         config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
         config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
+
+        # fmt 11.0.2 uses consteval which Xcode 26 Clang rejects in non-constant
+        # contexts. Compiling fmt with C++17 disables consteval (it's a C++20
+        # feature), so FMT_CONSTEVAL resolves to nothing and the build succeeds.
+        if target.name == 'fmt'
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        end
       end
     end
 

@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Acneno App</string>
+	<string>Acneno Life</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -35,10 +35,14 @@
 	</dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Face ID to unlock your workspace.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Acneno Life needs access to your camera to take travel-duty attendance photos and profile photos.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We use your location to validate attendance within the office radius.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>We use your location to validate attendance within the office radius.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Acneno Life needs access to your photo library so you can choose a profile photo.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

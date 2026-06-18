@@ -177,7 +177,7 @@ acneno-hrms/
 ├── .env.example                  # Environment template
 ├── package.json                  # Dependencies and scripts
 ├── tsconfig.json                 # TypeScript configuration
-├── eslint.config.mjs             # ESLint v9 configuration
+├── .oxlintrc.json                # Oxlint configuration
 ├── tailwind.config.js            # Tailwind CSS configuration
 └── README.md                     # This file
 ```
@@ -241,13 +241,28 @@ acneno-hrms/
 
 ### Running Development Builds
 
+#### Recommended local loop
+
+```bash
+# Android
+pnpm dev:android --list-devices
+
+# iOS
+pnpm dev:ios --list-devices
+```
+
+- `pnpm dev:android` and `pnpm dev:ios` auto-start Metro if it is not already running, then launch the native app.
+- After the first successful install, keep the app open and just edit files in `src/`. React Native Fast Refresh should update most JS/TS/UI changes without rerunning `pnpm ios` or `pnpm android`.
+- Rebuild only when you change native code or native build/config files such as `android/**`, `ios/**`, Pods, Gradle files, native dependencies, or similar platform-level settings.
+
 #### Android
 
 ```bash
-# Terminal 1: Start Metro bundler
-pnpm start
+# One command: start Metro if needed, then run Android
+pnpm dev:android
 
-# Terminal 2: Run on Android device/emulator
+# Or keep Metro in a dedicated terminal
+pnpm start
 pnpm android
 ```
 
@@ -258,12 +273,19 @@ pnpm android
 #### iOS (macOS only)
 
 ```bash
-# Terminal 1: Start Metro bundler
-pnpm start
+# One command: start Metro if needed, then run iOS
+pnpm dev:ios
 
-# Terminal 2: Run on iOS simulator
+# Or keep Metro in a dedicated terminal
+pnpm start
 pnpm ios
 ```
+
+#### Fast Refresh recovery
+
+- Confirm Fast Refresh is enabled from the React Native Dev Menu if UI updates stop applying on save.
+- Reset Metro cache with `pnpm start --reset-cache` if the app stops picking up JS changes.
+- Install `watchman` on macOS if file watching feels unreliable.
 
 ## Environment Variables
 
@@ -566,11 +588,17 @@ Key endpoint categories:
 | Script | Command | Description |
 |--------|---------|-------------|
 | **start** | `pnpm start` | Start Metro bundler |
+| **dev:android** | `pnpm dev:android` | Start Metro if needed, then run on Android |
+| **dev:ios** | `pnpm dev:ios` | Start Metro if needed, then run on iOS simulator |
 | **android** | `pnpm android` | Run on Android device/emulator |
 | **ios** | `pnpm ios` | Run on iOS simulator (macOS only) |
 | **lint** | `pnpm lint` | Run ESLint on codebase |
 | **typecheck** | `pnpm typecheck` | Run TypeScript type checking |
 | **test** | `pnpm test` | Run Jest tests |
+| **check:no-shadow-js** | `pnpm check:no-shadow-js` | Fail if any `.js` sits beside a `.ts`/`.tsx` in `src/` |
+| **clean:shadow-js** | `pnpm clean:shadow-js` | Delete shadow `.js` files beside TS sources |
+
+> **Never run `tsc <file>` directly.** Passing file arguments to `tsc` bypasses `tsconfig.json` entirely, so `noEmit: true` is ignored and `.js` files get emitted next to every `.ts`/`.tsx` source (breaks Metro). Always use `pnpm typecheck`, which runs `tsc -p tsconfig.json --noEmit`. If shadow files appear, run `pnpm clean:shadow-js`. The `check:no-shadow-js` guard runs automatically on `pnpm start` / `pnpm ios` / `pnpm android` and (via `simple-git-hooks`) on every commit.
 
 ## Troubleshooting
 
