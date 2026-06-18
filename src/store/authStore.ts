@@ -26,6 +26,7 @@ type AuthState = {
   isUnlocked: boolean;
   bootstrap: () => Promise<void>;
   setSession: (payload: SessionPayload) => Promise<void>;
+  updateUser: (user: User) => Promise<void>;
   clearSession: () => Promise<void>;
   setPin: (pin: string) => Promise<void>;
   verifyPin: (pin: string) => Promise<boolean>;
@@ -132,6 +133,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   setSession: async ({ accessToken, refreshToken, user }) => {
     await saveSession({ accessToken, refreshToken, user });
     set({ accessToken, refreshToken, user, isUnlocked: true });
+  },
+  updateUser: async (user) => {
+    const accessToken = await loadSecret(ACCESS_TOKEN_KEY);
+    const refreshToken = await loadSecret(REFRESH_TOKEN_KEY);
+    if (user) {
+      await saveSecret(USER_KEY, JSON.stringify(user));
+    }
+    set({ user, accessToken, refreshToken });
   },
   clearSession: async () => {
     await clearStoredSession();

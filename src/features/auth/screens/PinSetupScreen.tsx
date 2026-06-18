@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StatusBar,
   Text,
   TextInput,
@@ -19,6 +20,189 @@ const MAROON = '#6B1A2B';
 const PIN_LENGTH = 6;
 
 type Step = 'create' | 'confirm' | 'biometry';
+
+type PinEntryStepProps = {
+  title: string;
+  description: string;
+  value: string;
+  inputRef: React.RefObject<TextInput | null>;
+  onChangeText: (text: string) => void;
+  autoFocus?: boolean;
+  error?: string | null;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  theme: 'light' | 'maroon';
+  onBack?: () => void;
+};
+
+const sanitizePin = (text: string) => text.replace(/\D/g, '').slice(0, PIN_LENGTH);
+
+const PinEntryStep = ({
+  title,
+  description,
+  value,
+  inputRef,
+  onChangeText,
+  autoFocus,
+  error,
+  icon,
+  theme,
+  onBack,
+}: PinEntryStepProps) => {
+  const isMaroon = theme === 'maroon';
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <StatusBar barStyle={isMaroon ? 'light-content' : 'dark-content'} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <SafeAreaView style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingHorizontal: 24,
+              paddingVertical: 28,
+            }}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+          >
+            <View
+              style={{
+                gap: 24,
+                paddingTop: isMaroon ? 4 : 32,
+              }}
+            >
+              {onBack ? (
+                <Pressable
+                  onPress={onBack}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    alignSelf: 'flex-start',
+                    gap: 6,
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    borderRadius: 20,
+                    backgroundColor: 'rgba(107,26,43,0.08)',
+                  }}
+                >
+                  <Ionicons name="arrow-back" size={20} color={MAROON} />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: MAROON }}>
+                    Ubah PIN
+                  </Text>
+                </Pressable>
+              ) : null}
+
+              <View
+                style={{
+                  gap: 20,
+                  alignItems: 'center',
+                  backgroundColor: isMaroon ? MAROON : '#fff',
+                  borderRadius: 32,
+                  paddingHorizontal: 24,
+                  paddingVertical: isMaroon ? 28 : 0,
+                }}
+              >
+                <View
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 36,
+                    backgroundColor: isMaroon ? 'rgba(255,255,255,0.15)' : '#F0E8EA',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons
+                    name={icon}
+                    size={30}
+                    color={isMaroon ? '#fff' : MAROON}
+                  />
+                </View>
+
+                <View style={{ gap: 8, alignItems: 'center' }}>
+                  <Text
+                    style={{
+                      fontSize: 24,
+                      fontWeight: '700',
+                      color: isMaroon ? '#fff' : '#111',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {title}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: isMaroon ? 'rgba(255,255,255,0.72)' : '#71717a',
+                      textAlign: 'center',
+                      lineHeight: 20,
+                    }}
+                  >
+                    {description}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => inputRef.current?.focus()}
+              style={{
+                marginTop: 40,
+                gap: 18,
+                alignItems: 'center',
+                borderRadius: 28,
+                backgroundColor: '#FAFAFA',
+                paddingHorizontal: 24,
+                paddingVertical: 32,
+              }}
+            >
+              <PinDots filledCount={value.length} />
+              {error ? (
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: '#dc2626',
+                    textAlign: 'center',
+                    minHeight: 20,
+                  }}
+                >
+                  {error}
+                </Text>
+              ) : (
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: '#71717a',
+                    textAlign: 'center',
+                    minHeight: 20,
+                  }}
+                >
+                  PIN will continue automatically after the sixth digit.
+                </Text>
+              )}
+
+              <TextInput
+                ref={inputRef}
+                value={value}
+                onChangeText={onChangeText}
+                keyboardType="number-pad"
+                textContentType="oneTimeCode"
+                maxLength={PIN_LENGTH}
+                secureTextEntry
+                autoFocus={autoFocus}
+                caretHidden
+                contextMenuHidden
+                style={{ position: 'absolute', opacity: 0 }}
+              />
+            </Pressable>
+          </ScrollView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+};
 
 export const PinSetupScreen = () => {
   const { setPin, enableBiometrics, setUnlocked } = useAuthStore();
@@ -39,19 +223,20 @@ export const PinSetupScreen = () => {
       .catch(() => setBiometryType(null));
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (advanceTimer.current) {
-        clearTimeout(advanceTimer.current);
-      }
-    };
-  }, []);
-
-  // Focus the confirm input when entering confirm step
-  useEffect(() => {
-    if (step === 'confirm') {
-      setTimeout(() => confirmInputRef.current?.focus(), 100);
+  const clearAdvanceTimer = () => {
+    if (advanceTimer.current) {
+      clearTimeout(advanceTimer.current);
+      advanceTimer.current = null;
     }
+  };
+
+  useEffect(() => clearAdvanceTimer, []);
+
+  useEffect(() => {
+    const nextInput = step === 'confirm' ? confirmInputRef : createInputRef;
+    const timer = setTimeout(() => nextInput.current?.focus(), 100);
+
+    return () => clearTimeout(timer);
   }, [step]);
 
   const biometryLabel = useMemo(() => {
@@ -60,49 +245,64 @@ export const PinSetupScreen = () => {
     return '';
   }, [biometryType]);
 
-  const handleCreateChange = (text: string) => {
-    const clean = text.replace(/\D/g, '').slice(0, PIN_LENGTH);
-    setError(null);
-    setPinValue(clean);
-    if (clean.length === PIN_LENGTH) {
-      advanceTimer.current = setTimeout(() => {
-        setStep('confirm');
-      }, 300);
-    }
+  const scheduleAdvance = (callback: () => void) => {
+    clearAdvanceTimer();
+    advanceTimer.current = setTimeout(() => {
+      advanceTimer.current = null;
+      callback();
+    }, 250);
   };
 
-  const handleConfirmChange = (text: string) => {
-    const clean = text.replace(/\D/g, '').slice(0, PIN_LENGTH);
+  const handleCreateChange = (text: string) => {
+    const clean = sanitizePin(text);
+    clearAdvanceTimer();
     setError(null);
-    setConfirmPin(clean);
+    setPinValue(clean);
+
     if (clean.length === PIN_LENGTH) {
-      advanceTimer.current = setTimeout(() => {
-        verifyPin(clean);
-      }, 300);
+      scheduleAdvance(() => {
+        setConfirmPin('');
+        setStep('confirm');
+      });
     }
   };
 
   const verifyPin = async (confirm: string) => {
     if (confirm !== pin) {
-      setError('PIN tidak cocok. Silakan coba lagi.');
+      setError('PIN tidak cocok. Coba lagi atau ketuk "Ubah PIN" untuk membuat PIN baru.');
       setConfirmPin('');
       return;
     }
+
     if (biometryType) {
       setStep('biometry');
       return;
     }
+
     setIsSaving(true);
     await setPin(pin);
     setIsSaving(false);
     setUnlocked(true);
   };
 
+  const handleConfirmChange = (text: string) => {
+    const clean = sanitizePin(text);
+    clearAdvanceTimer();
+    setError(null);
+    setConfirmPin(clean);
+
+    if (clean.length === PIN_LENGTH) {
+      scheduleAdvance(() => {
+        void verifyPin(clean);
+      });
+    }
+  };
+
   const handleBack = () => {
+    clearAdvanceTimer();
     setConfirmPin('');
     setError(null);
     setStep('create');
-    setTimeout(() => createInputRef.current?.focus(), 100);
   };
 
   const onEnableBiometrics = async () => {
@@ -117,7 +317,6 @@ export const PinSetupScreen = () => {
     setUnlocked(true);
   };
 
-  // ── Biometry step ──
   if (step === 'biometry') {
     return (
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -170,6 +369,7 @@ export const PinSetupScreen = () => {
                   setIsSaving(false);
                   setUnlocked(true);
                 }}
+                disabled={isSaving}
               />
             </View>
           </View>
@@ -178,196 +378,33 @@ export const PinSetupScreen = () => {
     );
   }
 
-  // ── Confirm step ──
   if (step === 'confirm') {
     return (
-      <View style={{ flex: 1, backgroundColor: '#fff' }}>
-        <StatusBar barStyle="light-content" />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
-        >
-          {/* Maroon header */}
-          <View
-            style={{
-              backgroundColor: MAROON,
-              borderBottomLeftRadius: 32,
-              borderBottomRightRadius: 32,
-              paddingBottom: 40,
-            }}
-          >
-            <SafeAreaView edges={['top']}>
-              <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-                <Pressable
-                  onPress={handleBack}
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: 'rgba(255,255,255,0.15)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons name="arrow-back" size={22} color="#fff" />
-                </Pressable>
-              </View>
-              <View style={{ alignItems: 'center', paddingTop: 20, gap: 16 }}>
-                <View
-                  style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 32,
-                    backgroundColor: 'rgba(255,255,255,0.15)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons name="lock-closed" size={28} color="#fff" />
-                </View>
-                <Text
-                  style={{
-                    fontSize: 22,
-                    fontWeight: '700',
-                    color: '#fff',
-                    textAlign: 'center',
-                  }}
-                >
-                  Konfirmasi PIN Anda
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: 'rgba(255,255,255,0.7)',
-                    textAlign: 'center',
-                    paddingHorizontal: 32,
-                  }}
-                >
-                  Silakan masukkan kembali 6 digit angka yang baru saja Anda buat
-                </Text>
-              </View>
-            </SafeAreaView>
-          </View>
-
-          {/* White body */}
-          <Pressable
-            onPress={() => confirmInputRef.current?.focus()}
-            style={{ flex: 1, paddingTop: 32 }}
-          >
-            <View style={{ alignItems: 'center', gap: 16 }}>
-              <PinDots filledCount={confirmPin.length} />
-              {error ? (
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: '#dc2626',
-                    textAlign: 'center',
-                    paddingHorizontal: 24,
-                  }}
-                >
-                  {error}
-                </Text>
-              ) : null}
-            </View>
-            {/* Hidden input for device keyboard */}
-            <TextInput
-              ref={confirmInputRef}
-              value={confirmPin}
-              onChangeText={handleConfirmChange}
-              keyboardType="number-pad"
-              maxLength={PIN_LENGTH}
-              secureTextEntry
-              caretHidden
-              contextMenuHidden
-              style={{ position: 'absolute', opacity: 0 }}
-            />
-          </Pressable>
-        </KeyboardAvoidingView>
-      </View>
+      <PinEntryStep
+        title="Konfirmasi PIN Anda"
+        description="Silakan masukkan kembali 6 digit angka yang baru saja Anda buat."
+        value={confirmPin}
+        inputRef={confirmInputRef}
+        onChangeText={handleConfirmChange}
+        error={error}
+        icon="lock-closed"
+        theme="maroon"
+        onBack={handleBack}
+      />
     );
   }
 
-  // ── Create step ──
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <StatusBar barStyle="dark-content" />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <SafeAreaView style={{ flex: 1 }}>
-          <Pressable
-            onPress={() => createInputRef.current?.focus()}
-            style={{
-              flex: 1,
-              justifyContent: 'center',
-              paddingBottom: 48,
-            }}
-          >
-            {/* Top content */}
-            <View style={{ alignItems: 'center', gap: 20 }}>
-              <View
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 32,
-                  backgroundColor: '#F0E8EA',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="lock-closed-outline" size={28} color={MAROON} />
-              </View>
-              <View style={{ gap: 8, alignItems: 'center', paddingHorizontal: 32 }}>
-                <Text
-                  style={{
-                    fontSize: 22,
-                    fontWeight: '700',
-                    color: '#111',
-                    textAlign: 'center',
-                  }}
-                >
-                  Buat PIN Keamanan
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: '#71717a',
-                    textAlign: 'center',
-                  }}
-                >
-                  Gunakan 6 digit angka untuk mengamankan akun Anda
-                </Text>
-              </View>
-              <View style={{ marginTop: 12 }}>
-                <PinDots filledCount={pin.length} />
-              </View>
-            </View>
-
-            {/* Hidden input for device keyboard */}
-            <TextInput
-              ref={createInputRef}
-              value={pin}
-              onChangeText={handleCreateChange}
-              keyboardType="number-pad"
-              maxLength={PIN_LENGTH}
-              secureTextEntry
-              autoFocus
-              caretHidden
-              contextMenuHidden
-              style={{ position: 'absolute', opacity: 0 }}
-            />
-          </Pressable>
-
-          <Pressable
-            style={{ alignSelf: 'center', paddingVertical: 8, marginBottom: 16 }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: MAROON }}>
-              Lupa PIN?
-            </Text>
-          </Pressable>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </View>
+    <PinEntryStep
+      title="Buat PIN Keamanan"
+      description="Gunakan 6 digit angka untuk mengamankan akun Anda."
+      value={pin}
+      inputRef={createInputRef}
+      onChangeText={handleCreateChange}
+      autoFocus
+      error={error}
+      icon="lock-closed-outline"
+      theme="light"
+    />
   );
 };

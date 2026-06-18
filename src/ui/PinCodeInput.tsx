@@ -6,6 +6,7 @@ type PinCodeInputProps = {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
+  onComplete?: (value: string) => void;
   length?: number;
   autoFocus?: boolean;
   containerClassName?: string;
@@ -16,6 +17,7 @@ export const PinCodeInput = ({
   label,
   value,
   onChangeText,
+  onComplete,
   length = 6,
   autoFocus,
   containerClassName,
@@ -51,7 +53,7 @@ export const PinCodeInput = ({
                 key={`${label}-${index}`}
                 className={cn(
                   'h-12 w-11 items-center justify-center rounded-xl border bg-slate-50',
-                  isActive && 'border-brand-500 bg-brand-50 shadow-sm',
+                  isActive && 'border-maroon-500 bg-maroon-50 shadow-sm',
                   !isActive && isFilled && 'border-ink-700/20 bg-white',
                   !isActive && !isFilled && 'border-slate-200'
                 )}
@@ -66,9 +68,13 @@ export const PinCodeInput = ({
         <TextInput
           ref={inputRef}
           value={value}
-          onChangeText={(text) =>
-            onChangeText(text.replace(/\D/g, '').slice(0, length))
-          }
+          onChangeText={(text) => {
+            const nextValue = text.replace(/\D/g, '').slice(0, length);
+            onChangeText(nextValue);
+            if (nextValue.length === length) {
+              onComplete?.(nextValue);
+            }
+          }}
           keyboardType="number-pad"
           textContentType="oneTimeCode"
           maxLength={length}

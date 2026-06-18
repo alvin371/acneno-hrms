@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Controller, useForm } from 'react-hook-form';
 import { useState } from 'react';
@@ -25,8 +26,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const schema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  identifier: z
+    .string()
+    .trim()
+    .min(3, 'Masukkan email perusahaan atau username yang valid'),
+  password: z.string().min(6, 'Password minimal 6 karakter'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -36,7 +40,11 @@ const INPUT_BG = '#F2F0ED';
 const MUTED = '#9CA3AF';
 const DANGER = '#dc2626';
 
+const MAX_FORM_WIDTH = 480;
+
 export const LoginScreen = () => {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
   const setSession = useAuthStore((state) => state.setSession);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -47,13 +55,13 @@ export const LoginScreen = () => {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      username: '',
+      identifier: '',
       password: '',
     },
   });
 
   const mutation = useMutation({
-    mutationFn: (values: FormValues) => login(values.username, values.password),
+    mutationFn: (values: FormValues) => login(values.identifier, values.password),
     onSuccess: async (data) => {
       await setSession({
         accessToken: data.accessToken,
@@ -90,24 +98,46 @@ export const LoginScreen = () => {
           <SafeAreaView edges={['top']}>
             <View className="items-center px-6 pb-16 pt-12">
               <View
-                className="mb-6 h-24 w-24 items-center justify-center rounded-3xl"
-                style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+                style={
+                  isTablet
+                    ? { maxWidth: MAX_FORM_WIDTH, width: '100%', alignItems: 'center' }
+                    : undefined
+                }
               >
-                <Image
-                  source={logos.forbes}
-                  className="h-16 w-16"
-                  resizeMode="contain"
-                />
+                <View
+                  className="mb-6 h-24 w-24 items-center justify-center rounded-3xl"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+                >
+                  <Image
+                    source={logos.forbes}
+                    className="h-16 w-16"
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text className="mb-2 text-3xl font-bold text-white">
+                  Selamat Datang
+                </Text>
+                <Text
+                  className="text-center text-sm"
+                  style={{ color: 'rgba(255,255,255,0.7)' }}
+                >
+                  Masuk menggunakan email perusahaan atau username aktif untuk
+                  melanjutkan ke akun HRMS Anda.
+                </Text>
+                <View
+                  className="mt-6 rounded-3xl px-4 py-3"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+                >
+                  <Text
+                    className="text-center text-xs font-medium"
+                    style={{ color: 'rgba(255,255,255,0.85)' }}
+                  >
+                    Satu kolom login untuk dua cara masuk:
+                    {' '}
+                    email kantor atau username akun Anda.
+                  </Text>
+                </View>
               </View>
-              <Text className="mb-2 text-3xl font-bold text-white">
-                Selamat Datang
-              </Text>
-              <Text
-                className="text-center text-sm"
-                style={{ color: 'rgba(255,255,255,0.7)' }}
-              >
-                Silakan masuk ke akun Anda untuk melanjutkan.
-              </Text>
             </View>
           </SafeAreaView>
 
@@ -120,10 +150,17 @@ export const LoginScreen = () => {
               borderTopRightRadius: 32,
             }}
           >
-            {/* Email Field */}
+            <View
+              style={
+                isTablet
+                  ? { maxWidth: MAX_FORM_WIDTH, width: '100%', alignSelf: 'center' }
+                  : undefined
+              }
+            >
+            {/* Identifier Field */}
             <Controller
               control={control}
-              name="username"
+              name="identifier"
               render={({
                 field: { onChange, value },
                 fieldState: { error },
@@ -133,32 +170,37 @@ export const LoginScreen = () => {
                     className="mb-2 text-xs font-semibold uppercase tracking-widest"
                     style={{ color: MAROON }}
                   >
-                    Email
+                    Email Atau Username
                   </Text>
                   <View
                     className="flex-row items-center rounded-2xl px-4 py-3.5"
-                    style={{ backgroundColor: INPUT_BG }}
+                    style={{
+                      backgroundColor: INPUT_BG,
+                      borderWidth: 1,
+                      borderColor: error ? DANGER : 'rgba(107,26,43,0.08)',
+                    }}
                   >
                     <TextInput
                       className="flex-1 text-base"
                       style={{ color: '#111' }}
-                      placeholder="nama@perusahaan.com"
+                      placeholder="Contoh: nama@perusahaan.com atau alvin"
                       placeholderTextColor={MUTED}
                       value={value ?? ''}
                       onChangeText={onChange}
-                      keyboardType="email-address"
                       autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="username"
+                      returnKeyType="next"
                     />
-                    <Ionicons name="mail-outline" size={20} color={MUTED} />
+                    <Ionicons name="at-circle-outline" size={20} color={MUTED} />
                   </View>
-                  {error ? (
-                    <Text
-                      className="mt-1 text-xs"
-                      style={{ color: DANGER }}
-                    >
-                      {error.message}
-                    </Text>
-                  ) : null}
+                  <Text
+                    className="mt-2 text-xs leading-5"
+                    style={{ color: error ? DANGER : MUTED }}
+                  >
+                    {error?.message ??
+                      'Gunakan email perusahaan jika tersedia, atau masukkan username yang terdaftar.'}
+                  </Text>
                 </View>
               )}
             />
@@ -185,11 +227,16 @@ export const LoginScreen = () => {
                     <TextInput
                       className="flex-1 text-base"
                       style={{ color: '#111' }}
-                      placeholder="Enter your password"
+                      placeholder="Masukkan password akun Anda"
                       placeholderTextColor={MUTED}
                       value={value ?? ''}
                       onChangeText={onChange}
                       secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      textContentType="password"
+                      returnKeyType="done"
+                      onSubmitEditing={handleSubmit(onSubmit)}
                     />
                     <Pressable
                       onPress={() => setShowPassword((prev) => !prev)}
@@ -213,7 +260,12 @@ export const LoginScreen = () => {
                     >
                       {error.message}
                     </Text>
-                  ) : null}
+                  ) : (
+                    <Text className="mt-2 text-xs leading-5" style={{ color: MUTED }}>
+                      Password bersifat case-sensitive. Pastikan huruf besar,
+                      huruf kecil, dan angka sesuai.
+                    </Text>
+                  )}
                 </View>
               )}
             />
@@ -247,33 +299,6 @@ export const LoginScreen = () => {
               )}
             </Pressable>
 
-            {/* Divider */}
-            <View className="mb-6 flex-row items-center">
-              <View
-                className="h-px flex-1"
-                style={{ backgroundColor: '#E5E7EB' }}
-              />
-              <Text className="mx-4 text-xs" style={{ color: MUTED }}>
-                Atau masuk dengan
-              </Text>
-              <View
-                className="h-px flex-1"
-                style={{ backgroundColor: '#E5E7EB' }}
-              />
-            </View>
-
-            {/* Biometric Button */}
-            <View className="items-center">
-              <Pressable
-                className="h-14 w-14 items-center justify-center rounded-full"
-                style={{ borderWidth: 1.5, borderColor: '#E5E7EB' }}
-              >
-                <Ionicons
-                  name="finger-print-outline"
-                  size={28}
-                  color={MAROON}
-                />
-              </Pressable>
             </View>
           </View>
         </ScrollView>
