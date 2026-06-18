@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { tokens } from '@/config/tokens';
 import { cn } from '@/utils/cn';
 import type { WifiErrorCode } from '@/hooks/useWifiValidation';
 
@@ -12,21 +13,22 @@ const SETTINGS_ERROR_CODES: WifiErrorCode[] = [
 
 const ERROR_HINTS: Record<WifiErrorCode, string> = {
   permission_location:
-    'Enable location access in your device settings to verify Wi-Fi.',
-  permission_wifi: 'Enable Wi-Fi access in your device settings.',
-  not_connected: 'Connect to your office Wi-Fi network and try again.',
+    'Aktifkan akses lokasi di pengaturan perangkat untuk verifikasi Wi-Fi.',
+  permission_wifi: 'Aktifkan akses Wi-Fi di pengaturan perangkat.',
+  not_connected: 'Hubungkan ke jaringan Wi-Fi kantor lalu coba lagi.',
+  outside_radius: 'Mendekatlah ke lokasi kantor lalu coba lagi.',
   ssid_unreadable:
-    'Turn on Wi-Fi and location services, then try again.',
+    'Nyalakan Wi-Fi dan layanan lokasi, lalu coba lagi.',
   bssid_unreadable:
-    'Turn on Wi-Fi and location services, then try again.',
-  ssid_mismatch: 'Connect to your office Wi-Fi network and try again.',
+    'Nyalakan Wi-Fi dan layanan lokasi, lalu coba lagi.',
+  ssid_mismatch: 'Hubungkan ke jaringan Wi-Fi kantor lalu coba lagi.',
   bssid_mismatch:
-    "Make sure you're connected to the correct office Wi-Fi.",
+    'Pastikan perangkat tersambung ke Wi-Fi kantor yang benar.',
   not_configured:
-    'Contact your administrator to configure office Wi-Fi.',
-  proof_failed: 'Try again or contact your administrator.',
-  api_error: 'Check your internet connection and try again.',
-  timeout: 'Check your connection and try again.',
+    'Hubungi administrator untuk mengatur Wi-Fi kantor.',
+  proof_failed: 'Coba lagi atau hubungi administrator.',
+  api_error: 'Periksa koneksi internet lalu coba lagi.',
+  timeout: 'Periksa koneksi Anda lalu coba lagi.',
 };
 
 type WifiValidationCardProps = {
@@ -81,9 +83,9 @@ export const WifiValidationCard = ({
   const containerClass = cn(
     'rounded-2xl border',
     variant === 'compact' ? 'p-3' : 'p-4',
-    isChecking && 'border-slate-200 bg-slate-100',
-    isVerified && 'border-emerald-200 bg-emerald-100',
-    isFailed && 'border-rose-200 bg-rose-100'
+    isChecking && 'bg-white',
+    isVerified && 'bg-emerald-100',
+    isFailed && 'bg-rose-50'
   );
 
   const titleClass = cn(
@@ -103,15 +105,24 @@ export const WifiValidationCard = ({
   );
 
   const statusLabel = isChecking
-    ? 'Verifying Wi-Fi...'
+    ? 'Memeriksa Wi-Fi...'
     : isVerified
-      ? 'Wi-Fi verified'
-      : 'Wi-Fi required';
+      ? 'Wi-Fi terverifikasi'
+      : 'Wi-Fi kantor dibutuhkan';
 
-  const iconColor = isVerified ? '#16a34a' : isFailed ? '#dc2626' : '#64748b';
+  const iconColor = isVerified ? '#047857' : isFailed ? '#BE123C' : tokens.colors.textSub;
 
   return (
-    <View className={containerClass}>
+    <View
+      className={containerClass}
+      style={{
+        borderColor: isVerified
+          ? '#A7F3D0'
+          : isFailed
+            ? '#FDA4AF'
+            : tokens.colors.borderWarm,
+      }}
+    >
       <View className="flex-row items-center justify-between gap-3">
         <View className="flex-row items-start gap-3 flex-1">
           <View className="mt-0.5">
@@ -126,7 +137,7 @@ export const WifiValidationCard = ({
           <View className="flex-1">
             <Text className={titleClass}>{statusLabel}</Text>
             <Text className={subtitleClass} numberOfLines={1}>
-              Wi-Fi: {wifiSsid ?? 'Unknown'}
+              Wi-Fi: {wifiSsid ?? 'Tidak terbaca'}
             </Text>
             {isFailed && wifiProofError ? (
               <Text className={cn(subtitleClass, 'mt-1')}>
@@ -152,10 +163,11 @@ export const WifiValidationCard = ({
           onOpenSettings ? (
             <Pressable
               onPress={onOpenSettings}
-              className="rounded-lg border border-rose-300 px-3 py-1"
+              className="rounded-lg border px-3 py-1"
+              style={{ borderColor: '#FDA4AF' }}
             >
               <Text className="text-xs font-semibold text-rose-700">
-                Open Settings
+                Buka pengaturan
               </Text>
             </Pressable>
           ) : null}
@@ -164,17 +176,17 @@ export const WifiValidationCard = ({
             disabled={isChecking}
             className={cn(
               'rounded-lg border px-3 py-1',
-              isChecking ? 'border-slate-200' : 'border-slate-300',
               isChecking ? 'opacity-60' : 'opacity-100'
             )}
+            style={{ borderColor: tokens.colors.borderWarm }}
           >
             <Text
               className={cn(
                 'text-xs font-semibold',
-                isChecking ? 'text-slate-500' : 'text-slate-700'
+                isChecking ? 'text-ink-400' : 'text-ink-600'
               )}
             >
-              Refresh
+              Periksa lagi
             </Text>
           </Pressable>
         </View>

@@ -1,5 +1,6 @@
 import { apiClient } from '@/api/client';
-import type { OvertimeDetail, OvertimeRecord, OvertimeType, UploadResponse } from '@/api/types';
+import { uploadFile } from '@/api/upload';
+import type { OvertimeDetail, OvertimeRecord, OvertimeType } from '@/api/types';
 
 type OvertimePayload = {
   overtimeTypeId: number;
@@ -62,19 +63,5 @@ type UploadFilePayload = {
   type?: string | null;
 };
 
-export const uploadOvertimeAttachment = async (file: UploadFilePayload) => {
-  const formData = new FormData();
-  formData.append('type', 'leave'); // TODO: change back to 'overtime' once backend supports it
-  formData.append('file', {
-    uri: file.uri,
-    name: file.name || 'attachment',
-    type: file.type || 'application/octet-stream',
-  } as any);
-
-  const response = await apiClient.post<UploadResponse>('/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-  return response.data;
-};
+export const uploadOvertimeAttachment = async (file: UploadFilePayload) =>
+  uploadFile({ ...file, uploadType: 'leave' });

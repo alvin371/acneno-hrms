@@ -16,12 +16,12 @@ export const LeaveStack = () => (
     <Stack.Screen
       name="LeaveCreate"
       component={LeaveCreateScreen}
-      options={{ title: 'Apply Leave' }}
+      options={{ headerShown: false }}
     />
     <Stack.Screen
       name="LeaveDetail"
       component={LeaveDetailScreen}
-      options={{ title: 'Leave Detail' }}
+      options={{ headerShown: false }}
     />
   </Stack.Navigator>
 );

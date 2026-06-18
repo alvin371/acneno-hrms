@@ -17,6 +17,8 @@ import { FormFilePicker } from '@/ui/FormFilePicker';
 import { Card } from '@/ui/Card';
 import { StatusChip } from '@/ui/StatusChip';
 import { WifiValidationCard } from '@/ui/WifiValidationCard';
+import { EmptyState } from '@/ui/EmptyState';
+import { LoadingSkeleton } from '@/ui/LoadingSkeleton';
 import {
   createOvertime,
   getOvertimes,
@@ -32,6 +34,7 @@ import { env } from '@/config/env';
 import { openSettings } from 'react-native-permissions';
 import { useWifiValidation } from '@/hooks/useWifiValidation';
 import type { OvertimeStackParamList } from '@/navigation/types';
+import { tokens } from '@/config/tokens';
 
 const formatDateUTC = (date: Date) => {
   const year = date.getUTCFullYear();
@@ -54,12 +57,12 @@ const getTodayInJakarta = () => {
 };
 
 const schema = z.object({
-  overtimeTypeId: z.string().min(1, 'Overtime type is required'),
-  overtimeDate: z.string().min(1, 'Date is required'),
-  startTime: z.string().min(1, 'Start time is required'),
-  endTime: z.string().min(1, 'End time is required'),
-  reason: z.string().min(1, 'Reason is required'),
-  attachmentPath: z.string().min(1, 'Attachment is required'),
+  overtimeTypeId: z.string().min(1, 'Jenis lembur wajib dipilih'),
+  overtimeDate: z.string().min(1, 'Tanggal wajib dipilih'),
+  startTime: z.string().min(1, 'Jam mulai wajib diisi'),
+  endTime: z.string().min(1, 'Jam selesai wajib diisi'),
+  reason: z.string().min(1, 'Alasan wajib diisi'),
+  attachmentPath: z.string().min(1, 'Lampiran wajib diunggah'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -67,11 +70,13 @@ type FormValues = z.infer<typeof schema>;
 type Props = NativeStackScreenProps<OvertimeStackParamList, 'OvertimeRequest'>;
 
 const palette = {
-  blue: '#1E88E5',
-  lightBlue: '#E3F2FD',
-  gray: '#6B7280',
-  ink: '#1a1a1a',
-  white: '#ffffff',
+  maroon: tokens.colors.maroon,
+  ink: tokens.colors.ink,
+  textSub: tokens.colors.textSub,
+  warm: tokens.colors.warmSurface,
+  sand: '#F2F0ED',
+  maroonTint: '#F0E8EA',
+  white: '#FFFFFF',
 };
 
 const ClockIcon = ({ color }: { color: string }) => (
@@ -88,24 +93,13 @@ const ClockIcon = ({ color }: { color: string }) => (
 );
 
 const BackArrow = ({ color }: { color: string }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
     <Path
       d="M15 18l-6-6 6-6"
       stroke={color}
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-const PlusIcon = ({ color }: { color: string }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M12 5v14M5 12h14"
-      stroke={color}
-      strokeWidth={2.5}
-      strokeLinecap="round"
     />
   </Svg>
 );
@@ -135,11 +129,7 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const todayInJakarta = useMemo(() => getTodayInJakarta(), []);
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-  } = useForm<FormValues>({
+  const { control, handleSubmit, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       overtimeTypeId: '',
@@ -190,13 +180,12 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
     if (activeTab === 'new') {
       refreshValidation();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, refreshValidation]);
 
   const mutation = useMutation({
     mutationFn: createOvertime,
     onSuccess: () => {
-      showToast('success', 'Overtime request submitted successfully.');
+      showToast('success', 'Pengajuan lembur berhasil dikirim.');
       queryClient.invalidateQueries({ queryKey: ['overtime'] });
       reset();
       setActiveTab('history');
@@ -223,7 +212,7 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
     try {
       const maxSizeBytes = 2 * 1024 * 1024;
       if (file.size && file.size > maxSizeBytes) {
-        showErrorModal('File size must be 2MB or less.');
+        showErrorModal('Ukuran file maksimal 2MB.');
         return undefined;
       }
 
@@ -238,7 +227,7 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
         lowerName.endsWith('.png');
 
       if (!isAllowedType) {
-        showErrorModal('Only PDF, JPG, JPEG, or PNG files are allowed.');
+        showErrorModal('Hanya file PDF, JPG, JPEG, atau PNG yang diperbolehkan.');
         return undefined;
       }
 
@@ -271,17 +260,28 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
     <Pressable
       onPress={() => navigation.navigate('OvertimeDetail', { id: item.id })}
     >
-      <Card className="gap-2">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-sm font-semibold text-ink-700">
+      <Card className="gap-3">
+        <View className="flex-row items-start justify-between gap-3">
+          <View className="flex-1">
+            <Text className="text-base font-semibold text-ink-700">
               {item.overtimeTypeName}
             </Text>
-            <Text className="text-xs text-ink-500">
-              {item.overtimeDate} - {formatDurationHours(item.durationHours)}
+            <Text className="mt-1 text-sm text-ink-500">
+              {item.overtimeDate}
             </Text>
           </View>
           <StatusChip label={item.status} variant={statusToVariant(item.status)} />
+        </View>
+        <View
+          className="rounded-2xl px-3 py-2"
+          style={{ backgroundColor: palette.sand }}
+        >
+          <Text className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+            Durasi
+          </Text>
+          <Text className="mt-1 text-sm font-medium text-ink-700">
+            {formatDurationHours(item.durationHours)} • {item.startTime} - {item.endTime}
+          </Text>
         </View>
         <Text className="text-sm text-ink-500" numberOfLines={2}>
           {item.reason}
@@ -291,53 +291,67 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
   );
 
   return (
-    <View className="flex-1 bg-slate-50" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center px-4 py-3">
-        <Pressable onPress={() => navigation.goBack()} className="mr-4">
-          <BackArrow color={palette.ink} />
-        </Pressable>
-        <Text className="flex-1 text-center text-lg font-semibold text-ink-700">
-          Overtime Request
-        </Text>
-        <View className="w-6" />
+    <View
+      className="flex-1"
+      style={{ backgroundColor: palette.warm, paddingTop: insets.top }}
+    >
+      <View className="px-4 pb-4 pt-3" style={{ backgroundColor: palette.maroon }}>
+        <View className="flex-row items-center">
+          <Pressable
+            onPress={() => navigation.goBack()}
+            className="mr-4 rounded-full p-2"
+            style={{ backgroundColor: 'rgba(255,255,255,0.14)' }}
+          >
+            <BackArrow color={palette.white} />
+          </Pressable>
+          <View className="flex-1">
+            <Text className="text-xs font-semibold uppercase tracking-wide text-white/70">
+              Lembur
+            </Text>
+            <Text className="text-2xl font-bold text-white">
+              Pengajuan lembur
+            </Text>
+            <Text className="mt-1 text-sm text-white/80">
+              Ajukan kerja tambahan dan pantau status persetujuannya.
+            </Text>
+          </View>
+        </View>
       </View>
 
-      <View className="flex-row border-b border-slate-200 px-4">
-        <Pressable
-          onPress={() => setActiveTab('new')}
-          className="mr-6 pb-3"
-          style={{
-            borderBottomWidth: 2,
-            borderBottomColor: activeTab === 'new' ? palette.blue : 'transparent',
-          }}
+      <View className="px-4 pb-4 pt-4">
+        <View
+          className="flex-row rounded-full p-1"
+          style={{ backgroundColor: palette.sand }}
         >
-          <Text
-            className="text-sm font-medium"
-            style={{ color: activeTab === 'new' ? palette.blue : palette.gray }}
-          >
-            New Request
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveTab('history')}
-          className="pb-3"
-          style={{
-            borderBottomWidth: 2,
-            borderBottomColor: activeTab === 'history' ? palette.blue : 'transparent',
-          }}
-        >
-          <Text
-            className="text-sm font-medium"
-            style={{ color: activeTab === 'history' ? palette.blue : palette.gray }}
-          >
-            Request History
-          </Text>
-        </Pressable>
+          {([
+            ['new', 'Ajukan'],
+            ['history', 'Riwayat'],
+          ] as const).map(([tabId, label]) => {
+            const active = activeTab === tabId;
+            return (
+              <Pressable
+                key={tabId}
+                onPress={() => setActiveTab(tabId)}
+                className="flex-1 rounded-full px-4 py-3"
+                style={{
+                  backgroundColor: active ? palette.white : 'transparent',
+                }}
+              >
+                <Text
+                  className="text-center text-sm font-semibold"
+                  style={{ color: active ? palette.maroon : palette.textSub }}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       {activeTab === 'new' ? (
         <Screen scroll>
-          <View className="gap-4">
+          <View className="gap-5">
             <WifiValidationCard
               isValidating={isValidating}
               wifiProofOk={wifiProofOk}
@@ -349,72 +363,87 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
               onOpenSettings={() => openSettings()}
             />
 
-            <FormSelect
-              control={control}
-              name="overtimeTypeId"
-              label="Overtime Type"
-              placeholder="Select overtime type"
-              options={overtimeTypeOptions}
-            />
-
-            <FormDatePicker
-              control={control}
-              name="overtimeDate"
-              label="Select Date"
-              placeholder="YYYY-MM-DD"
-              minimumDate={todayInJakarta}
-            />
-
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <FormTimePicker
-                  control={control}
-                  name="startTime"
-                  label="Start Time"
-                  placeholder="Select time"
-                />
+            <Card className="gap-4">
+              <View>
+                <Text className="text-lg font-semibold text-ink-700">
+                  Detail lembur
+                </Text>
+                <Text className="mt-1 text-sm text-ink-500">
+                  Isi data dasar agar pengajuan bisa diproses lebih cepat.
+                </Text>
               </View>
-              <View className="flex-1">
-                <FormTimePicker
-                  control={control}
-                  name="endTime"
-                  label="End Time"
-                  placeholder="Select time"
-                />
-              </View>
-            </View>
 
-            <View
-              className="flex-row items-center rounded-2xl p-4"
-              style={{ backgroundColor: palette.lightBlue }}
-            >
-              <View className="flex-row items-center gap-3">
-                <ClockIcon color={palette.blue} />
-                <View>
-                  <Text className="text-xs font-medium uppercase text-ink-500">
-                    Total Duration
-                  </Text>
-                  <Text className="text-lg font-bold text-ink-700">
-                    {duration.hours} hrs {duration.minutes} mins
-                  </Text>
+              <FormSelect
+                control={control}
+                name="overtimeTypeId"
+                label="Jenis lembur"
+                placeholder="Pilih jenis lembur"
+                options={overtimeTypeOptions}
+              />
+
+              <FormDatePicker
+                control={control}
+                name="overtimeDate"
+                label="Tanggal lembur"
+                placeholder="YYYY-MM-DD"
+                minimumDate={todayInJakarta}
+              />
+
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <FormTimePicker
+                    control={control}
+                    name="startTime"
+                    label="Jam mulai"
+                    placeholder="Pilih waktu"
+                  />
+                </View>
+                <View className="flex-1">
+                  <FormTimePicker
+                    control={control}
+                    name="endTime"
+                    label="Jam selesai"
+                    placeholder="Pilih waktu"
+                  />
                 </View>
               </View>
-            </View>
+
+              <View
+                className="rounded-2xl p-4"
+                style={{ backgroundColor: palette.sand }}
+              >
+                <View className="flex-row items-center gap-3">
+                  <View
+                    className="h-10 w-10 items-center justify-center rounded-full"
+                    style={{ backgroundColor: palette.maroonTint }}
+                  >
+                    <ClockIcon color={palette.maroon} />
+                  </View>
+                  <View>
+                    <Text className="text-xs font-medium uppercase text-ink-500">
+                      Estimasi durasi
+                    </Text>
+                    <Text className="mt-1 text-lg font-bold text-ink-700">
+                      {duration.hours} jam {duration.minutes} menit
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </Card>
 
             <FormInput
               control={control}
               name="reason"
-              label="Reason"
-              placeholder="Describe why you need overtime..."
+              label="Alasan lembur"
+              placeholder="Jelaskan kebutuhan lembur Anda..."
               multiline
             />
 
             <FormFilePicker
               control={control}
               name="attachmentPath"
-              label="Attachment"
-              placeholder="No file selected"
-              helperText="PDF, JPG, JPEG, or PNG. Max 2MB."
+              label="Lampiran"
+              helperText="PDF, JPG, JPEG, atau PNG. Maksimal 2MB."
               loading={uploadMutation.isPending}
               onPick={handleAttachmentPick}
             />
@@ -422,64 +451,50 @@ export const OvertimeRequestScreen = ({ navigation }: Props) => {
             <Button
               label={
                 uploadMutation.isPending
-                  ? 'Uploading...'
+                  ? 'Mengunggah...'
                   : mutation.isPending
-                    ? 'Submitting...'
+                    ? 'Mengirim...'
                     : isWifiChecking
-                      ? 'Verifying Wi-Fi...'
+                      ? 'Memeriksa Wi-Fi...'
                       : wifiProofOk === false
-                        ? 'Wi-Fi Required'
-                        : 'Submit Request >'
+                        ? 'Sambungkan Wi-Fi kantor'
+                        : 'Kirim pengajuan'
               }
               onPress={handleSubmit(onSubmit)}
               loading={mutation.isPending || uploadMutation.isPending}
               disabled={isWifiChecking || wifiProofOk !== true}
-              className="mt-2"
-              style={{ backgroundColor: palette.blue }}
+              className="mt-1"
             />
           </View>
         </Screen>
       ) : (
         <View className="flex-1">
           {isLoading ? (
-            <View className="flex-1 items-center justify-center p-4">
-              <Text className="text-base text-ink-500">Loading...</Text>
+            <View className="px-4 pt-1">
+              <LoadingSkeleton count={3} />
             </View>
           ) : overtimes && overtimes.length > 0 ? (
             <FlatList
               data={overtimes}
               keyExtractor={(item) => String(item.id)}
               renderItem={renderHistoryItem}
-              contentContainerStyle={{ padding: 16, gap: 12 }}
+              contentContainerStyle={{
+                padding: 16,
+                gap: 12,
+                paddingBottom: insets.bottom + 24,
+              }}
               refreshing={isRefetching}
               onRefresh={refetch}
             />
           ) : (
-            <View className="flex-1 items-center justify-center p-4">
-              <Text className="text-base text-ink-500">
-                No overtime requests yet.
-              </Text>
+            <View className="px-4 pt-1">
+              <EmptyState
+                icon="time-outline"
+                title="Belum ada pengajuan lembur"
+                description="Pengajuan yang sudah dibuat akan muncul di sini agar mudah dipantau."
+              />
             </View>
           )}
-
-          <Pressable
-            onPress={() => setActiveTab('new')}
-            className="absolute items-center justify-center rounded-full shadow-lg"
-            style={{
-              backgroundColor: palette.blue,
-              width: 56,
-              height: 56,
-              bottom: insets.bottom + 16,
-              right: 16,
-              shadowColor: '#000',
-              shadowOpacity: 0.2,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 6,
-            }}
-          >
-            <PlusIcon color={palette.white} />
-          </Pressable>
         </View>
       )}
     </View>

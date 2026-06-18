@@ -1,10 +1,11 @@
 import { apiClient } from '@/api/client';
+import { uploadFile } from '@/api/upload';
 import type {
   Holiday,
   LeaveDetail,
   LeaveQuotaResponse,
   LeaveRecord,
-  UploadResponse,
+  LeaveTypesResponse,
 } from '@/api/types';
 
 type LeavePayload = {
@@ -28,6 +29,11 @@ export const getLeaveDetail = async (id: number) => {
 export const getLeaveQuota = async () => {
   const response = await apiClient.get<LeaveQuotaResponse>('/leave/quota');
   return response.data;
+};
+
+export const getLeaveTypes = async () => {
+  const response = await apiClient.get<LeaveTypesResponse>('/leave/types');
+  return response.data.data;
 };
 
 export const getHolidays = async (start?: string, end?: string) => {
@@ -63,19 +69,5 @@ type UploadFilePayload = {
   type?: string | null;
 };
 
-export const uploadLeaveAttachment = async (file: UploadFilePayload) => {
-  const formData = new FormData();
-  formData.append('type', 'leave');
-  formData.append('file', {
-    uri: file.uri,
-    name: file.name || 'attachment',
-    type: file.type || 'application/octet-stream',
-  } as any);
-
-  const response = await apiClient.post<UploadResponse>('/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-  return response.data;
-};
+export const uploadLeaveAttachment = async (file: UploadFilePayload) =>
+  uploadFile({ ...file, uploadType: 'leave' });

@@ -3,6 +3,7 @@ import type { Control, FieldValues, Path } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import { tokens } from '@/config/tokens';
 import { cn } from '@/utils/cn';
 
 type FormDatePickerProps<T extends FieldValues> = {
@@ -76,7 +77,7 @@ export const FormDatePicker = <T extends FieldValues>({
               disableTouchEvent: false,
               customStyles: {
                 container: {
-                  backgroundColor: '#2563eb',
+                  backgroundColor: tokens.colors.maroon,
                   borderRadius: 8,
                 },
                 text: {
@@ -104,15 +105,16 @@ export const FormDatePicker = <T extends FieldValues>({
             <Pressable onPress={openPicker}>
               <View
                 className={cn(
-                  'rounded-xl border border-slate-200 bg-white px-3 py-3',
+                  'rounded-xl border bg-white px-3 py-3',
                   inputClassName
                 )}
+                style={{ borderColor: tokens.colors.borderWarm }}
               >
                 <Text
-                  className={cn(
-                    'text-base',
-                    displayValue ? 'text-ink-700' : 'text-slate-400'
-                  )}
+                  className={cn('text-base')}
+                  style={{
+                    color: displayValue ? tokens.colors.ink : tokens.colors.textMuted,
+                  }}
                 >
                   {displayValue || placeholder}
                 </Text>
@@ -136,11 +138,11 @@ export const FormDatePicker = <T extends FieldValues>({
               <View className="rounded-t-3xl bg-white px-6 pb-6 pt-4">
                 <View className="flex-row justify-between pb-2">
                   <Text className="text-base font-semibold text-ink-700">
-                    Select date
+                    Pilih tanggal
                   </Text>
                   <Pressable onPress={closePicker}>
                     <Text className="text-base font-semibold text-ink-500">
-                      Close
+                      Tutup
                     </Text>
                   </Pressable>
                 </View>
@@ -160,9 +162,9 @@ export const FormDatePicker = <T extends FieldValues>({
                     closePicker();
                   }}
                   theme={{
-                    todayTextColor: '#2563eb',
-                    arrowColor: '#2563eb',
-                    selectedDayBackgroundColor: '#2563eb',
+                    todayTextColor: tokens.colors.maroon,
+                    arrowColor: tokens.colors.maroon,
+                    selectedDayBackgroundColor: tokens.colors.maroon,
                     selectedDayTextColor: '#ffffff',
                   }}
                 />

@@ -15,7 +15,7 @@ export const OvertimeStack = () => (
     <Stack.Screen
       name="OvertimeDetail"
       component={OvertimeDetailScreen}
-      options={{ title: 'Overtime Request' }}
+      options={{ headerShown: false }}
     />
   </Stack.Navigator>
 );

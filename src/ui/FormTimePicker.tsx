@@ -3,6 +3,7 @@ import type { Control, FieldValues, Path } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import { Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Svg, { Circle, Path as SvgPath } from 'react-native-svg';
+import { tokens } from '@/config/tokens';
 import { cn } from '@/utils/cn';
 
 let DateTimePicker: React.ComponentType<any> | null = null;
@@ -97,7 +98,12 @@ const FallbackTimePicker = ({
         <View className="flex-row justify-between pb-4">
           <Text className="text-base font-semibold text-ink-700">{label}</Text>
           <Pressable onPress={handleConfirm}>
-            <Text className="text-base font-semibold text-blue-600">Done</Text>
+            <Text
+              className="text-base font-semibold"
+              style={{ color: tokens.colors.maroon }}
+            >
+              Selesai
+            </Text>
           </Pressable>
         </View>
         <View className="flex-row justify-center gap-4">
@@ -106,8 +112,12 @@ const FallbackTimePicker = ({
               Hour
             </Text>
             <View
-              className="rounded-xl border border-slate-200 bg-slate-50"
-              style={{ height: 200 }}
+              className="rounded-xl border"
+              style={{
+                height: 200,
+                borderColor: tokens.colors.borderWarm,
+                backgroundColor: '#F5F5F5',
+              }}
             >
               <ScrollView showsVerticalScrollIndicator={false}>
                 {hours.map((h) => (
@@ -117,7 +127,7 @@ const FallbackTimePicker = ({
                     className="items-center py-3"
                     style={{
                       backgroundColor:
-                        selectedHour === h ? '#1E88E5' : 'transparent',
+                        selectedHour === h ? tokens.colors.maroon : 'transparent',
                     }}
                   >
                     <Text
@@ -138,8 +148,12 @@ const FallbackTimePicker = ({
               Minute
             </Text>
             <View
-              className="rounded-xl border border-slate-200 bg-slate-50"
-              style={{ height: 200 }}
+              className="rounded-xl border"
+              style={{
+                height: 200,
+                borderColor: tokens.colors.borderWarm,
+                backgroundColor: '#F5F5F5',
+              }}
             >
               <ScrollView showsVerticalScrollIndicator={false}>
                 {minutes.map((m) => (
@@ -149,7 +163,7 @@ const FallbackTimePicker = ({
                     className="items-center py-3"
                     style={{
                       backgroundColor:
-                        selectedMinute === m ? '#1E88E5' : 'transparent',
+                        selectedMinute === m ? tokens.colors.maroon : 'transparent',
                     }}
                   >
                     <Text
@@ -166,7 +180,10 @@ const FallbackTimePicker = ({
             </View>
           </View>
         </View>
-        <View className="mt-4 items-center rounded-xl bg-slate-100 py-3">
+        <View
+          className="mt-4 items-center rounded-xl py-3"
+          style={{ backgroundColor: '#F5F5F5' }}
+        >
           <Text className="text-2xl font-bold text-ink-700">
             {String(selectedHour).padStart(2, '0')}:
             {String(selectedMinute).padStart(2, '0')}
@@ -225,20 +242,21 @@ export const FormTimePicker = <T extends FieldValues>({
             <Pressable onPress={() => setShowPicker(true)}>
               <View
                 className={cn(
-                  'flex-row items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-3',
+                  'flex-row items-center justify-between rounded-xl border bg-white px-3 py-3',
                   error && 'border-red-300',
                   inputClassName
                 )}
+                style={!error ? { borderColor: tokens.colors.borderWarm } : undefined}
               >
                 <Text
-                  className={cn(
-                    'text-base',
-                    displayValue ? 'text-ink-700' : 'text-slate-400'
-                  )}
+                  className={cn('text-base')}
+                  style={{
+                    color: displayValue ? tokens.colors.ink : tokens.colors.textMuted,
+                  }}
                 >
                   {displayValue || placeholder}
                 </Text>
-                <ClockIcon color="#94a3b8" />
+                <ClockIcon color={tokens.colors.textMuted} />
               </View>
             </Pressable>
             {error ? (
@@ -265,8 +283,11 @@ export const FormTimePicker = <T extends FieldValues>({
                         {label}
                       </Text>
                       <Pressable onPress={handleConfirm}>
-                        <Text className="text-base font-semibold text-blue-600">
-                          Done
+                        <Text
+                          className="text-base font-semibold"
+                          style={{ color: tokens.colors.maroon }}
+                        >
+                          Selesai
                         </Text>
                       </Pressable>
                     </View>

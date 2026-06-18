@@ -1,68 +1,24 @@
 import { useCallback, useState } from 'react';
-import { Platform } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
-import {
-  check,
-  checkMultiple,
-  PERMISSIONS,
-  request,
-  requestMultiple,
-  RESULTS,
-} from 'react-native-permissions';
+import Geolocation from '@react-native-community/geolocation';
+import { RESULTS } from 'react-native-permissions';
 import { useQuery } from '@tanstack/react-query';
 import { getConfig } from '@/features/config/api';
+import {
+  getConfigRadiusMeters,
+  getConfigWifiAllowlist,
+  getResolvedConfigOffices,
+  type ResolvedConfigOffice,
+} from '@/features/config/selectors';
 import { requestOfficeProof } from '@/features/attendance/api';
 import { getErrorMessage } from '@/api/error';
 import { env } from '@/config/env';
-
-const requestLocationPermission = async () => {
-  const permission = Platform.select({
-    ios: PERMISSIONS.IOS.LOCATION_WHEN_IN_USE,
-    android: PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
-  });
-
-  if (!permission) {
-    return RESULTS.UNAVAILABLE;
-  }
-
-  if (Platform.OS === 'android' && Platform.Version >= 33) {
-    const permissions = [
-      PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION,
-      PERMISSIONS.ANDROID.NEARBY_WIFI_DEVICES,
-    ];
-    let statuses = await checkMultiple(permissions);
-    if (
-      statuses[PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION] === RESULTS.DENIED ||
-      statuses[PERMISSIONS.ANDROID.NEARBY_WIFI_DEVICES] === RESULTS.DENIED
-    ) {
-      statuses = await requestMultiple(permissions);
-    }
-    return statuses[PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION];
-  }
-
-  let status = await check(permission);
-  if (status === RESULTS.DENIED) {
-    status = await request(permission);
-  }
-  return status;
-};
-
-const requestWifiPermission = async () => {
-  if (Platform.OS !== 'android' || Platform.Version < 33) {
-    return RESULTS.GRANTED;
-  }
-  const permission = PERMISSIONS.ANDROID.NEARBY_WIFI_DEVICES;
-  let status = await check(permission);
-  if (status === RESULTS.DENIED) {
-    status = await request(permission);
-  }
-  return status;
-};
-
-const normalizeBssid = (value?: string | null) =>
-  value?.trim().toLowerCase() ?? '';
-
-const normalizeSsid = (value?: string | null) => value?.trim() ?? '';
+import { haversineDistanceMeters } from '@/utils/distance';
+import {
+  normalizeBssid,
+  normalizeSsid,
+  readCurrentWifiSnapshot,
+  requestLocationPermission,
+} from '@/utils/wifi';
 
 const coerceStringList = (value: unknown) => {
   if (Array.isArray(value)) {
@@ -77,21 +33,42 @@ const coerceStringList = (value: unknown) => {
   return [];
 };
 
-const isUnknownSsid = (value?: string | null) => {
-  if (!value) {
-    return true;
-  }
-  const normalized = value.trim().toLowerCase();
-  return normalized === '<unknown ssid>' || normalized === 'unknown ssid';
+type DeviceLocation = {
+  coords: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+  };
 };
 
-const isPlaceholderBssid = (value?: string | null) =>
-  normalizeBssid(value) === '02:00:00:00:00';
+const getCurrentLocation = (): Promise<DeviceLocation> =>
+  new Promise((resolve, reject) => {
+    if (!Geolocation || typeof Geolocation.getCurrentPosition !== 'function') {
+      reject(new Error('Geolocation service not available.'));
+      return;
+    }
+
+    Geolocation.getCurrentPosition(
+      (position) => resolve(position),
+      (error) => reject(new Error(error.message || 'Failed to get location.')),
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      }
+    );
+  });
+
+const hasCoordinates = (
+  office: ResolvedConfigOffice
+): office is ResolvedConfigOffice & { lat: number; lng: number } =>
+  office.lat != null && office.lng != null;
 
 export type WifiErrorCode =
   | 'permission_location'
   | 'permission_wifi'
   | 'not_connected'
+  | 'outside_radius'
   | 'ssid_unreadable'
   | 'bssid_unreadable'
   | 'ssid_mismatch'
@@ -137,72 +114,11 @@ export const useWifiValidation = (): WifiValidationState => {
 
       await Promise.race([
         (async () => {
-          // Step 1: Check permissions
-          const locStatus = await requestLocationPermission();
-
-          if (locStatus !== RESULTS.GRANTED) {
-            setWifiProofOk(false);
-            setErrorCode('permission_location');
-            setWifiProofError('Location permission is required.');
-            return;
-          }
-
-          const wifiStatus = await requestWifiPermission();
-          if (wifiStatus !== RESULTS.GRANTED) {
-            setWifiProofOk(false);
-            setErrorCode('permission_wifi');
-            setWifiProofError('Wi-Fi permission is blocked.');
-            return;
-          }
-
-          // Step 2: Fetch fresh Wi-Fi state (critical for iOS where
-          // SSID/BSSID are only readable after location permission is granted)
-          const freshState = await NetInfo.refresh();
-          const freshDetails =
-            freshState.type === 'wifi'
-              ? (freshState.details as { ssid?: string; bssid?: string })
-              : null;
-          const freshRawSsid = freshDetails?.ssid ?? null;
-          const freshRawBssid = freshDetails?.bssid ?? null;
-          const freshSsid = isUnknownSsid(freshRawSsid) ? null : freshRawSsid;
-          const freshBssid = isPlaceholderBssid(freshRawBssid) ? null : freshRawBssid;
-
-          // Store fresh SSID for display (iOS needs this)
-          setFreshWifiSsid(freshSsid);
-
-          if (freshState.type !== 'wifi') {
-            setWifiProofOk(false);
-            setErrorCode('not_connected');
-            setWifiProofError('Not connected to Wi-Fi.');
-            return;
-          }
-
-          // Step 3: Wi-Fi validation using fresh config
-          const configOffice = freshConfig?.office as
-            | Record<string, unknown>
-            | undefined;
-          const configWifi = freshConfig?.wifi as
-            | Record<string, unknown>
-            | undefined;
-
-          const rawAllowedSsids = coerceStringList(
-            configWifi?.allowed_ssids ??
-              configWifi?.ssids ??
-              configOffice?.allowed_ssids ??
-              configOffice?.wifi_ssids ??
-              configOffice?.wifi_ssid
-          );
-          const rawAllowedBssids = coerceStringList(
-            configWifi?.allowed_bssids ??
-              configWifi?.bssids ??
-              configOffice?.allowed_bssids ??
-              configOffice?.wifi_bssids ??
-              configOffice?.wifi_bssid
-          );
-          const allowedSsids = rawAllowedSsids
+          const configWifi = getConfigWifiAllowlist(freshConfig);
+          const allowedSsids = configWifi.allowedSsids
             .map((ssid) => normalizeSsid(ssid))
             .filter(Boolean);
-          const allowedBssids = rawAllowedBssids
+          const allowedBssids = configWifi.allowedBssids
             .map((bssid) => normalizeBssid(bssid))
             .filter(Boolean);
 
@@ -222,41 +138,136 @@ export const useWifiValidation = (): WifiValidationState => {
             );
           }
 
-          // When no local SSID/BSSID list is configured, skip local checks
-          // and go straight to backend proof (backend validates by its own rules)
+          const requiresWifiValidation =
+            allowedSsids.length > 0 || allowedBssids.length > 0;
+
+          // Step 1: Check permissions
+          const locStatus = await requestLocationPermission();
+
+          if (locStatus !== RESULTS.GRANTED) {
+            setWifiProofOk(false);
+            setErrorCode('permission_location');
+            setWifiProofError('Location permission is required.');
+            return;
+          }
+
+          const wifiRead = await readCurrentWifiSnapshot();
+          const freshSsid = wifiRead.snapshot.ssid;
+          const freshBssid = wifiRead.snapshot.bssid;
+          setFreshWifiSsid(freshSsid);
+
+          // Step 3: When no local SSID/BSSID list is configured, validate by location
+          // against nearest office coordinates.
           if (allowedSsids.length === 0 && allowedBssids.length === 0) {
             try {
-              const proof = await requestOfficeProof({
-                bssid: freshBssid ?? undefined,
-                ssid: freshSsid ?? undefined,
-              });
-              if (proof.ok) {
+              const current = await getCurrentLocation();
+              const configuredRadius =
+                getConfigRadiusMeters(freshConfig) ?? env.OFFICE_RADIUS_M ?? null;
+              const officeCoordinates = getResolvedConfigOffices(freshConfig)
+                .filter(hasCoordinates)
+                .map((office) => ({
+                  lat: office.lat,
+                  lng: office.lng,
+                  radius: office.radiusM ?? configuredRadius,
+                }));
+              const fallbackCoordinates =
+                env.OFFICE_LAT != null && env.OFFICE_LNG != null
+                  ? [{
+                      lat: env.OFFICE_LAT,
+                      lng: env.OFFICE_LNG,
+                      radius: configuredRadius,
+                    }]
+                  : [];
+              const targetCoordinates =
+                officeCoordinates.length > 0
+                  ? officeCoordinates
+                  : fallbackCoordinates;
+
+              if (targetCoordinates.length === 0) {
+                setWifiProofOk(false);
+                setErrorCode('not_configured');
+                setWifiProofError('Office location is not configured.');
+                return;
+              }
+
+              const nearestOffice = targetCoordinates.reduce(
+                (closest, officeCoordinate) => {
+                  const distance = haversineDistanceMeters(
+                    current.coords.latitude,
+                    current.coords.longitude,
+                    officeCoordinate.lat,
+                    officeCoordinate.lng
+                  );
+                  if (!Number.isFinite(distance)) {
+                    return closest;
+                  }
+                  if (!closest || distance < closest.distance) {
+                    return {
+                      distance,
+                      radius: officeCoordinate.radius,
+                    };
+                  }
+                  return closest;
+                },
+                null as { distance: number; radius: number | null } | null
+              );
+
+              if (!nearestOffice || nearestOffice.radius == null) {
+                setWifiProofOk(false);
+                setErrorCode('not_configured');
+                setWifiProofError('Office validation radius is not configured.');
+                return;
+              }
+
+              if (nearestOffice.distance <= nearestOffice.radius) {
                 setWifiProofOk(true);
                 setWifiProofError(null);
                 setErrorCode(null);
               } else {
                 setWifiProofOk(false);
-                setErrorCode('proof_failed');
-                setWifiProofError('Server could not verify your Wi-Fi.');
+                setErrorCode('outside_radius');
+                setWifiProofError('You are outside the office location range.');
               }
-            } catch (error) {
+            } catch {
               setWifiProofOk(false);
               setErrorCode('api_error');
-              setWifiProofError(getErrorMessage(error));
+              setWifiProofError('Unable to verify your location.');
             }
+            return;
+          }
+
+          if (wifiRead.status === 'permission_wifi' && requiresWifiValidation) {
+            setWifiProofOk(false);
+            setErrorCode('permission_wifi');
+            setWifiProofError('Wi-Fi permission is blocked.');
+            return;
+          }
+
+          if (wifiRead.status === 'not_connected') {
+            setWifiProofOk(false);
+            setErrorCode('not_connected');
+            setWifiProofError('Not connected to Wi-Fi.');
             return;
           }
 
           if (allowedSsids.length > 0 && !freshSsid) {
             setWifiProofOk(false);
-            setErrorCode('ssid_unreadable');
+            setErrorCode(
+              wifiRead.status === 'permission_wifi'
+                ? 'permission_wifi'
+                : 'ssid_unreadable'
+            );
             setWifiProofError('Unable to read Wi-Fi name.');
             return;
           }
 
           if (allowedBssids.length > 0 && !freshBssid) {
             setWifiProofOk(false);
-            setErrorCode('bssid_unreadable');
+            setErrorCode(
+              wifiRead.status === 'permission_wifi'
+                ? 'permission_wifi'
+                : 'bssid_unreadable'
+            );
             setWifiProofError('Unable to read Wi-Fi info.');
             return;
           }

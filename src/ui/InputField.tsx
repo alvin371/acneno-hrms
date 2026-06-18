@@ -1,5 +1,6 @@
 import { Text, TextInput, View } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+import { tokens } from '@/config/tokens';
 import { cn } from '@/utils/cn';
 
 type InputProps = {
@@ -50,13 +51,19 @@ export const InputField = ({
     </Text>
     <TextInput
       className={cn(
-        'rounded-xl border border-slate-200 bg-white px-3 py-3 text-base text-ink-700',
+        'rounded-xl border bg-white px-3 py-3 text-base text-ink-700',
         multiline && 'min-h-[96px]',
         inputClassName
       )}
-      style={inputStyle}
+      style={[
+        {
+          borderColor: tokens.colors.borderWarm,
+          color: tokens.colors.ink,
+        },
+        inputStyle,
+      ]}
       placeholder={placeholder}
-      placeholderTextColor={placeholderTextColor}
+      placeholderTextColor={placeholderTextColor ?? tokens.colors.textMuted}
       value={value}
       onChangeText={onChangeText}
       secureTextEntry={secureTextEntry}
