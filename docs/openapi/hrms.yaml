@@ -1,0 +1,3144 @@
+openapi: 3.0.3
+info:
+  title: Forbes Skin HRMS Mobile API
+  version: 1.0.0
+  description: |
+    OpenAPI documentation for `application/controllers/Api_hrms.php`.
+
+    Base path: `/api/hrms`
+servers:
+  - url: /
+    description: Relative base URL
+  - url: https://acnenosystem.com/
+    description: Production
+security:
+  - BearerAuth: []
+tags:
+  - name: Auth
+  - name: Profile
+  - name: PIN
+  - name: Config
+  - name: Attendance
+  - name: Holidays
+  - name: Upload
+  - name: Leave
+  - name: Performance
+  - name: Overtime
+paths:
+  /api/hrms/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and issue access/refresh token
+      description: Accepts any non-empty value from `email`, `username`, `identifier`, or `login` as the login identifier.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+      responses:
+        "200":
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthLoginResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /api/hrms/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token using refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRefreshRequest"
+      responses:
+        "200":
+          description: Refresh success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthRefreshResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /api/hrms/profile:
+    get:
+      tags: [Profile]
+      summary: Get authenticated user profile
+      responses:
+        "200":
+          description: Profile data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+    patch:
+      tags: [Profile]
+      summary: Update profile fields
+      description: Controller also accepts POST/PUT for this same route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdateRequest"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/profile/password:
+    post:
+      tags: [Profile]
+      summary: Change authenticated user password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfilePasswordChangeRequest"
+      responses:
+        "200":
+          description: Password changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/pin/setup:
+    post:
+      tags: [PIN]
+      summary: Setup or replace 6-digit PIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinSetupRequest"
+      responses:
+        "200":
+          description: PIN configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/pin/verify:
+    post:
+      tags: [PIN]
+      summary: Verify PIN, can return locked status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinVerifyRequest"
+      responses:
+        "200":
+          description: PIN verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PinVerifyResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/pin/reset:
+    post:
+      tags: [PIN]
+      summary: Reset PIN (requires password or admin role)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinResetRequest"
+      responses:
+        "200":
+          description: PIN reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/hrms/config:
+    get:
+      tags: [Config]
+      summary: Get office configuration overrides
+      responses:
+        "200":
+          description: Config payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/attendance/office-proof:
+    post:
+      tags: [Attendance]
+      summary: Validate WiFi office proof
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfficeProofRequest"
+      responses:
+        "200":
+          description: Proof result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/attendance/status:
+    get:
+      tags: [Attendance]
+      summary: Evaluate current attendance eligibility for office check-in/out
+      parameters:
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+            format: float
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+            format: float
+        - name: accuracy
+          in: query
+          required: true
+          schema:
+            type: number
+            format: float
+        - name: bssid
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: ssid
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: bssids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated BSSID list.
+        - name: ssids
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated SSID list.
+      responses:
+        "200":
+          description: Attendance status evaluation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/hrms/attendance/check-in:
+    post:
+      tags: [Attendance]
+      summary: Check in attendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceCheckRequest"
+      responses:
+        "200":
+          description: Check-in saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceCheckResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/hrms/attendance/out-of-town/check-in:
+    post:
+      tags: [Attendance]
+      summary: Check in Dinas Luar Kota attendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceOutOfTownCheckRequest"
+      responses:
+        "200":
+          description: Out-of-town check-in saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceCheckResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/hrms/attendance/out-of-town/check-out:
+    post:
+      tags: [Attendance]
+      summary: Check out Dinas Luar Kota attendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceOutOfTownCheckRequest"
+      responses:
+        "200":
+          description: Out-of-town check-out saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceCheckResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/hrms/attendance/check-out:
+    post:
+      tags: [Attendance]
+      summary: Check out attendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceCheckRequest"
+      responses:
+        "200":
+          description: Check-out saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceCheckResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/hrms/attendance/{id}/reason:
+    post:
+      tags: [Attendance]
+      summary: Add or update late/early attendance reason and optional attachment
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceReasonRequest"
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/AttendanceReasonRequest"
+                - type: object
+                  properties:
+                    attachment:
+                      type: string
+                      format: binary
+      responses:
+        "200":
+          description: Reason saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceReasonResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/attendance/history:
+    get:
+      tags: [Attendance]
+      summary: Get attendance logs for current user
+      parameters:
+        - $ref: "#/components/parameters/MonthParam"
+      responses:
+        "200":
+          description: Attendance history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceHistoryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /api/hrms/attendance/dashboard:
+    get:
+      tags: [Attendance]
+      summary: Get monthly attendance dashboard statistics for current user
+      parameters:
+        - $ref: "#/components/parameters/MonthParam"
+      responses:
+        "200":
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceDashboardResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/hrms/attendance/recap:
+    get:
+      tags: [Attendance]
+      summary: Get monthly attendance recap for current user
+      parameters:
+        - $ref: "#/components/parameters/MonthParam"
+      responses:
+        "200":
+          description: Recap summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecapSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/hrms/attendance/recap-all:
+    get:
+      tags: [Attendance]
+      summary: Get monthly attendance recap for all users (HR/Admin)
+      parameters:
+        - $ref: "#/components/parameters/MonthParam"
+      responses:
+        "200":
+          description: Recap summary list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  month:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/AttendanceRecapSummary"
+                        - type: object
+                          properties:
+                            user:
+                              $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/hrms/attendance/report:
+    get:
+      tags: [Attendance]
+      summary: Get monthly attendance report with daily details
+      parameters:
+        - $ref: "#/components/parameters/MonthParam"
+      responses:
+        "200":
+          description: Full report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceReportResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/hrms/holidays:
+    get:
+      tags: [Holidays]
+      summary: Get holiday list
+      parameters:
+        - $ref: "#/components/parameters/StartDateParam"
+        - $ref: "#/components/parameters/EndDateParam"
+      responses:
+        "200":
+          description: Holiday list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HolidayItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/upload:
+    post:
+      tags: [Upload]
+      summary: Upload attendance, leave, or profile attachment
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [type, file]
+              properties:
+                type:
+                  type: string
+                  enum: [attendance, leave, profile]
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Upload success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/leave:
+    get:
+      tags: [Leave]
+      summary: List current user leave requests
+      responses:
+        "200":
+          description: Leave list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LeaveItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Leave]
+      summary: Create leave request
+      description: Attachment follows the selected leave type. If the chosen leave type has `requiresAttachment = true`, provide either an uploaded `attachment` file or an `attachment_path` value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaveCreateRequest"
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/LeaveCreateRequest"
+                - type: object
+                  properties:
+                    attachment:
+                      type: string
+                      format: binary
+      responses:
+        "201":
+          description: Leave created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveCreateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/leave/{id}:
+    get:
+      tags: [Leave]
+      summary: Get leave detail
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Leave detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/leave/{id}/submit:
+    post:
+      tags: [Leave]
+      summary: Submit draft leave request into approval workflow
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  id:
+                    type: integer
+                  status:
+                    type: string
+                  statusRaw:
+                    type: string
+                  workflow:
+                    type: object
+                    additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/hrms/leave/{id}/cancel:
+    post:
+      tags: [Leave]
+      summary: Cancel leave request
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  id:
+                    type: integer
+                  status:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/hrms/leave/{id}/progress:
+    get:
+      tags: [Leave]
+      summary: Get leave approval progress
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Approval progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: integer
+                  status:
+                    type: string
+                  statusRaw:
+                    type: string
+                  instance:
+                    type: object
+                    additionalProperties: true
+                  currentStep:
+                    type: integer
+                  totalSteps:
+                    type: integer
+                  workflowStatus:
+                    type: string
+                  steps:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/leave/approvals:
+    get:
+      tags: [Leave]
+      summary: Get leave approval tasks for current approver
+      parameters:
+        - $ref: "#/components/parameters/ApprovalListStatusParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Leave approval task list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveApprovalTaskListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/leave/approvals/{stepId}:
+    get:
+      tags: [Leave]
+      summary: Get leave approval task detail for current approver
+      parameters:
+        - $ref: "#/components/parameters/StepIdParam"
+      responses:
+        "200":
+          description: Leave approval detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveApprovalDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/leave/approvals/{stepId}/approve:
+    post:
+      tags: [Leave]
+      summary: Approve leave approval step
+      parameters:
+        - $ref: "#/components/parameters/StepIdParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalActionRequest"
+      responses:
+        "200":
+          description: Leave approval recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveApprovalActionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/hrms/leave/approvals/{stepId}/reject:
+    post:
+      tags: [Leave]
+      summary: Reject leave approval step
+      parameters:
+        - $ref: "#/components/parameters/StepIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalActionRequest"
+      responses:
+        "200":
+          description: Leave rejection recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveApprovalActionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/leave/approvals/history:
+    get:
+      tags: [Leave]
+      summary: Get leave approval history for current approver
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Leave approval history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveApprovalTaskListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/hrms/leave/quota:
+    get:
+      tags: [Leave]
+      summary: Get leave quota summary and list
+      responses:
+        "200":
+          description: Quota list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveQuotaResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/hrms/leave/types:
+    get:
+      tags: [Leave]
+      summary: Get active leave types with personal quota
+      description: Returns active leave types together with quota information for the authenticated user. Use this to drive the leave creation form and pre-check quota and attachment requirements.
+      responses:
+        "200":
+          description: Leave types with personal quota data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveTypesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/hrms/leave/quota/detail:
+    get:
+      tags: [Leave]
+      summary: Get quota detail per leave type
+      parameters:
+        - $ref: "#/components/parameters/LeaveTypeIdQueryParam"
+      responses:
+        "200":
+          description: Quota detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveQuotaDetailResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/performance/templates/active:
+    get:
+      tags: [Performance]
+      summary: Get active performance template by period and user role
+      parameters:
+        - $ref: "#/components/parameters/PeriodYearParam"
+      responses:
+        "200":
+          description: Active template
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/performance/submissions:
+    get:
+      tags: [Performance]
+      summary: List current user performance submissions
+      parameters:
+        - $ref: "#/components/parameters/PeriodYearOptionalParam"
+      responses:
+        "200":
+          description: Submission list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Performance]
+      summary: Create performance submission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PerformanceSubmissionCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PerformanceSubmissionCreateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/performance/submissions/{id}:
+    get:
+      tags: [Performance]
+      summary: Get submission detail
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Submission detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/performance/submissions/{id}/cancel:
+    post:
+      tags: [Performance]
+      summary: Cancel submission
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  id:
+                    type: integer
+                  status:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/hrms/overtime/types:
+    get:
+      tags: [Overtime]
+      summary: Get active overtime types
+      responses:
+        "200":
+          description: Types
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        code:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type: string
+                          nullable: true
+                        requiresAttachment:
+                          type: boolean
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/hrms/overtime:
+    get:
+      tags: [Overtime]
+      summary: List current user overtime requests
+      parameters:
+        - $ref: "#/components/parameters/StatusParam"
+        - $ref: "#/components/parameters/MonthParam"
+      responses:
+        "200":
+          description: Overtime list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OvertimeListItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Overtime]
+      summary: Create overtime request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OvertimeCreateRequest"
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/OvertimeCreateRequest"
+                - type: object
+                  properties:
+                    attachment:
+                      type: string
+                      format: binary
+      responses:
+        "201":
+          description: Overtime created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OvertimeCreateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/hrms/overtime/summary:
+    get:
+      tags: [Overtime]
+      summary: Get overtime monthly summary
+      parameters:
+        - $ref: "#/components/parameters/MonthParam"
+      responses:
+        "200":
+          description: Summary with request list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OvertimeSummaryResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/overtime/{id}:
+    get:
+      tags: [Overtime]
+      summary: Get overtime request detail
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Overtime detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OvertimeDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/overtime/{id}/cancel:
+    post:
+      tags: [Overtime]
+      summary: Cancel overtime request
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  id:
+                    type: integer
+                  status:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/hrms/overtime/approvals:
+    get:
+      tags: [Overtime]
+      summary: Get overtime approval tasks for current approver
+      parameters:
+        - $ref: "#/components/parameters/ApprovalListStatusParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Overtime approval task list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OvertimeApprovalTaskListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/overtime/approvals/{stepId}:
+    get:
+      tags: [Overtime]
+      summary: Get overtime approval task detail for current approver
+      parameters:
+        - $ref: "#/components/parameters/StepIdParam"
+      responses:
+        "200":
+          description: Overtime approval detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OvertimeApprovalDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/hrms/overtime/approvals/inbox:
+    get:
+      tags: [Overtime]
+      summary: Get pending overtime approval inbox
+      responses:
+        "200":
+          description: Inbox list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OvertimeApprovalTaskListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/hrms/overtime/approvals/inbox/count:
+    get:
+      tags: [Overtime]
+      summary: Get pending overtime approval count
+      responses:
+        "200":
+          description: Count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/hrms/overtime/approvals/{stepId}/approve:
+    post:
+      tags: [Overtime]
+      summary: Approve overtime step
+      parameters:
+        - $ref: "#/components/parameters/StepIdParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalActionRequest"
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalActionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/hrms/overtime/approvals/{stepId}/reject:
+    post:
+      tags: [Overtime]
+      summary: Reject overtime step
+      parameters:
+        - $ref: "#/components/parameters/StepIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalActionRequest"
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalActionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /api/hrms/overtime/approvals/history:
+    get:
+      tags: [Overtime]
+      summary: Get overtime approval history
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: History list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OvertimeApprovalTaskListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    StepIdParam:
+      name: stepId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    ApprovalListStatusParam:
+      name: status
+      in: query
+      required: false
+      description: Approval task filter. Defaults to `pending`.
+      schema:
+        type: string
+        enum: [pending, history, all]
+    MonthParam:
+      name: month
+      in: query
+      required: false
+      description: Month format `YYYY-MM`.
+      schema:
+        type: string
+        pattern: '^\\d{4}-\\d{2}$'
+    StartDateParam:
+      name: start
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+    EndDateParam:
+      name: end
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+    PeriodYearParam:
+      name: period_year
+      in: query
+      required: true
+      schema:
+        type: integer
+    PeriodYearOptionalParam:
+      name: period_year
+      in: query
+      required: false
+      schema:
+        type: integer
+    StatusParam:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+    LeaveTypeIdQueryParam:
+      name: leave_type_id
+      in: query
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    MethodNotAllowed:
+      description: Method not allowed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationFailed:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationErrorResponse"
+    TooManyRequests:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [status, message, code]
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+        code:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+
+    ValidationErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/ErrorResponse"
+        - type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_FAILED
+            errors:
+              type: object
+              additionalProperties:
+                type: string
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        profilePicture:
+          type: string
+          nullable: true
+        keterangan:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        role_id:
+          type: integer
+          nullable: true
+        role_name:
+          type: string
+          nullable: true
+        roleInfo:
+          $ref: "#/components/schemas/UserRoleInfo"
+        position_id:
+          type: integer
+          nullable: true
+        position_name:
+          type: string
+          nullable: true
+        schedule:
+          $ref: "#/components/schemas/UserSchedule"
+        leave_quota:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserLeaveQuotaItem"
+
+    UserLeaveQuotaItem:
+      type: object
+      properties:
+        leave_type_id:
+          type: integer
+        leave_type_name:
+          type: string
+          nullable: true
+        leave_type_code:
+          type: string
+          nullable: true
+        total_days:
+          type: integer
+        remaining_days:
+          type: integer
+        status:
+          type: string
+
+    UserRoleInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+          nullable: true
+
+    UserSchedule:
+      type: object
+      properties:
+        start_time:
+          type: string
+        end_time:
+          type: string
+        source:
+          type: string
+        special_schedule:
+          type: boolean
+
+    AuthLoginRequest:
+      type: object
+      required: [password]
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+        identifier:
+          type: string
+        login:
+          type: string
+        password:
+          type: string
+
+    AuthLoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+
+    AuthRefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+        refresh_token:
+          type: string
+
+    AuthRefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+
+    ProfileUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        profilePicture:
+          type: string
+        keterangan:
+          type: string
+        phone:
+          type: string
+        phone_number:
+          type: string
+
+    ProfilePasswordChangeRequest:
+      type: object
+      required: [oldPassword, newPassword, passwordConfirmation]
+      properties:
+        oldPassword:
+          type: string
+        newPassword:
+          type: string
+        passwordConfirmation:
+          type: string
+
+    PinSetupRequest:
+      type: object
+      required: [pin]
+      properties:
+        pin:
+          type: string
+          pattern: '^\\d{6}$'
+
+    PinVerifyRequest:
+      type: object
+      required: [pin]
+      properties:
+        pin:
+          type: string
+
+    PinVerifyResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        locked:
+          type: boolean
+        lockedUntil:
+          type: string
+          nullable: true
+
+    PinResetRequest:
+      type: object
+      properties:
+        password:
+          type: string
+
+    WifiProof:
+      type: object
+      properties:
+        bssid:
+          type: string
+        ssid:
+          type: string
+        bssids:
+          type: array
+          items:
+            type: string
+        ssids:
+          type: array
+          items:
+            type: string
+
+    OfficeProofRequest:
+      type: object
+      properties:
+        wifiProof:
+          $ref: "#/components/schemas/WifiProof"
+
+    ConfigResponse:
+      type: object
+      required: [offices]
+      properties:
+        offices:
+          type: array
+          items:
+            $ref: "#/components/schemas/OfficeConfig"
+      example:
+        offices:
+          - id: 1
+            name: Main Office
+            location:
+              lat: -8.793469
+              lng: 115.1498025
+            ip:
+              allowed_cidrs:
+                - 203.0.113.0/24
+                - 198.51.100.10/32
+            overrides:
+              attendance:
+                requires_ip: true
+                min_accuracy_m: 50
+                radius_m: 150
+              wifi:
+                allowed_ssids:
+                  - Alvin
+          - id: 2
+            name: Side Office
+            location:
+              lat: -8.4341288
+              lng: 114.1799393
+            overrides:
+              attendance:
+                requires_ip: false
+                min_accuracy_m: 50
+                radius_m: 150
+          - id: 4
+            name: DOT Techno Valley
+            location:
+              lat: -7.927607
+              lng: 112.600588
+            overrides:
+              attendance:
+                requires_ip: false
+                min_accuracy_m: 50
+                radius_m: 150
+              wifi:
+                allowed_bssids:
+                  - 48:22:54:b0:8b:4b
+                allowed_ssids:
+                  - DOT Techno Valley
+          - id: 5
+            name: My Office
+            location:
+              lat: -8.5121672
+              lng: 114.2532438
+            overrides:
+              attendance:
+                requires_ip: false
+                min_accuracy_m: 200
+                radius_m: 200
+              wifi:
+                allowed_bssids:
+                  - d8:e8:44:4b:38:6b
+                allowed_ssids:
+                  - Wifi Rumah 1
+
+    OfficeConfig:
+      type: object
+      required: [id, name, location, overrides]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        location:
+          $ref: "#/components/schemas/OfficeLocation"
+        ip:
+          $ref: "#/components/schemas/OfficeIpConfig"
+        overrides:
+          $ref: "#/components/schemas/OfficeConfigOverrides"
+
+    OfficeLocation:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+          format: float
+        lng:
+          type: number
+          format: float
+
+    OfficeIpConfig:
+      type: object
+      required: [allowed_cidrs]
+      properties:
+        allowed_cidrs:
+          type: array
+          items:
+            type: string
+
+    OfficeConfigOverrides:
+      type: object
+      required: [attendance]
+      properties:
+        attendance:
+          $ref: "#/components/schemas/OfficeAttendanceOverride"
+        wifi:
+          $ref: "#/components/schemas/OfficeWifiOverride"
+
+    OfficeAttendanceOverride:
+      type: object
+      required: [requires_ip, min_accuracy_m, radius_m]
+      properties:
+        requires_ip:
+          type: boolean
+        min_accuracy_m:
+          type: integer
+          description: Minimum acceptable GPS accuracy in meters.
+        radius_m:
+          type: integer
+          description: Geofence radius in meters.
+
+    OfficeWifiOverride:
+      type: object
+      properties:
+        allowed_bssids:
+          type: array
+          items:
+            type: string
+        allowed_ssids:
+          type: array
+          items:
+            type: string
+
+    AttendanceCheckRequest:
+      type: object
+      required: [lat, lng, gpsAccuracy]
+      properties:
+        lat:
+          type: number
+          format: float
+        lng:
+          type: number
+          format: float
+        gpsAccuracy:
+          type: number
+          format: float
+        accuracy:
+          type: number
+          format: float
+        wifiProof:
+          $ref: "#/components/schemas/WifiProof"
+
+    AttendanceOutOfTownCheckRequest:
+      type: object
+      required: [attachmentPath]
+      properties:
+        dinasLocation:
+          type: string
+          example: Borobudur, Jogjakarta
+        notes:
+          type: string
+          nullable: true
+        attachmentPath:
+          type: string
+        photoPath:
+          type: string
+
+    AttendanceCategory:
+      type: string
+      enum: [REGULAR, OUT_OF_TOWN]
+
+    AttendanceFlags:
+      type: object
+      properties:
+        late:
+          type: boolean
+        early_checkout:
+          type: boolean
+        special_schedule:
+          type: boolean
+
+    AttendanceMinutes:
+      type: object
+      properties:
+        late:
+          type: integer
+          nullable: true
+        early_checkout:
+          type: integer
+          nullable: true
+
+    AttendanceSchedule:
+      type: object
+      properties:
+        start_time:
+          type: string
+        end_time:
+          type: string
+        source:
+          type: string
+
+    AttendanceStatusSchedule:
+      allOf:
+        - $ref: "#/components/schemas/AttendanceSchedule"
+        - type: object
+          properties:
+            late_threshold:
+              type: string
+            early_threshold:
+              type: string
+            is_special:
+              type: boolean
+
+    AttendanceOfficeRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    AttendanceStatusOffice:
+      allOf:
+        - $ref: "#/components/schemas/AttendanceOfficeRef"
+        - type: object
+          properties:
+            lat:
+              type: number
+              format: float
+            lng:
+              type: number
+              format: float
+            radius_m:
+              type: integer
+            min_accuracy_m:
+              type: integer
+
+    AttendanceStatusUserLocation:
+      type: object
+      properties:
+        lat:
+          type: number
+          format: float
+        lng:
+          type: number
+          format: float
+        accuracy:
+          type: number
+          format: float
+
+    AttendanceStatusComputed:
+      type: object
+      properties:
+        inside_radius:
+          type: boolean
+        distance_m:
+          type: number
+          format: float
+        ip_ok:
+          type: boolean
+        can_confirm:
+          type: boolean
+        reasons:
+          type: array
+          items:
+            type: string
+
+    AttendanceStatusWifi:
+      type: object
+      properties:
+        has_rules:
+          type: boolean
+        provided:
+          type: boolean
+        ok:
+          type: boolean
+
+    AttendanceStatusResponse:
+      type: object
+      properties:
+        office:
+          $ref: "#/components/schemas/AttendanceStatusOffice"
+        user:
+          $ref: "#/components/schemas/AttendanceStatusUserLocation"
+        computed:
+          $ref: "#/components/schemas/AttendanceStatusComputed"
+        wifi:
+          $ref: "#/components/schemas/AttendanceStatusWifi"
+        schedule:
+          $ref: "#/components/schemas/AttendanceStatusSchedule"
+
+    AttendanceCheckResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        attendance_log_id:
+          type: integer
+        type:
+          type: string
+          enum: [IN, OUT]
+        attendanceCategory:
+          $ref: "#/components/schemas/AttendanceCategory"
+        attendanceCategoryLabel:
+          type: string
+        dinasLocation:
+          type: string
+          nullable: true
+        notesText:
+          type: string
+          nullable: true
+        attachmentPath:
+          type: string
+          nullable: true
+        distanceMeters:
+          type: number
+          format: float
+          nullable: true
+        notes:
+          type: array
+          items:
+            type: string
+        flags:
+          $ref: "#/components/schemas/AttendanceFlags"
+        minutes:
+          $ref: "#/components/schemas/AttendanceMinutes"
+        schedule:
+          $ref: "#/components/schemas/AttendanceSchedule"
+        office:
+          $ref: "#/components/schemas/AttendanceOfficeRef"
+
+    AttendanceReasonRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+        attachment_path:
+          type: string
+        attachment:
+          type: string
+
+    AttendanceReasonResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [IN, OUT]
+        reason:
+          type: string
+          nullable: true
+        attachmentPath:
+          type: string
+          nullable: true
+        flags:
+          $ref: "#/components/schemas/AttendanceFlags"
+        hasReasonOrAttachment:
+          type: boolean
+
+    AttendanceHistoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        office_id:
+          type: integer
+        type:
+          type: string
+          enum: [IN, OUT]
+        lat:
+          type: number
+          format: float
+        lng:
+          type: number
+          format: float
+        accuracy:
+          type: number
+          format: float
+        distance_m:
+          type: number
+          format: float
+        method:
+          type: string
+        ip_address:
+          type: string
+        user_agent:
+          type: string
+          nullable: true
+        notes:
+          type: array
+          items:
+            type: string
+        flags:
+          $ref: "#/components/schemas/AttendanceFlags"
+        attendance_reason:
+          type: string
+          nullable: true
+        attachmentPath:
+          type: string
+          nullable: true
+        hasReasonOrAttachment:
+          type: boolean
+        reasonEligible:
+          type: boolean
+        attendanceCategory:
+          $ref: "#/components/schemas/AttendanceCategory"
+        attendanceCategoryLabel:
+          type: string
+        isOutOfTown:
+          type: boolean
+        dinasLocation:
+          type: string
+          nullable: true
+        notesText:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+        office_name:
+          type: string
+          nullable: true
+
+    AttendanceHistoryResponse:
+      type: object
+      properties:
+        month:
+          type: string
+          nullable: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttendanceHistoryItem"
+
+    AttendanceRecapSummary:
+      type: object
+      properties:
+        month:
+          type: string
+        present_days:
+          type: integer
+        late_count:
+          type: integer
+        early_checkout_count:
+          type: integer
+        absent_count:
+          type: integer
+        leave_days:
+          type: integer
+        dashboard_statistics:
+          $ref: "#/components/schemas/AttendanceDashboardStatistics"
+        start_time:
+          type: string
+        end_time:
+          type: string
+        schedule_source:
+          type: string
+        special_schedule:
+          type: boolean
+
+    AttendanceDashboardStatistics:
+      type: object
+      properties:
+        on_time:
+          type: integer
+        late:
+          type: integer
+        absent:
+          type: integer
+        leave:
+          type: integer
+        not_absent_out:
+          type: integer
+        early_leave:
+          type: integer
+
+    AttendanceDashboardResponse:
+      type: object
+      properties:
+        month:
+          type: string
+        statistics:
+          $ref: "#/components/schemas/AttendanceDashboardStatistics"
+
+    AttendanceReportDailyItem:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        status:
+          type: string
+        first_in:
+          type: string
+          nullable: true
+        last_out:
+          type: string
+          nullable: true
+        first_in_category:
+          $ref: "#/components/schemas/AttendanceCategory"
+        last_out_category:
+          $ref: "#/components/schemas/AttendanceCategory"
+        first_in_category_label:
+          type: string
+        last_out_category_label:
+          type: string
+        first_in_is_out_of_town:
+          type: boolean
+        last_out_is_out_of_town:
+          type: boolean
+        late:
+          type: boolean
+        early_checkout:
+          type: boolean
+        late_reason:
+          type: string
+          nullable: true
+        late_attachment_path:
+          type: string
+          nullable: true
+        early_checkout_reason:
+          type: string
+          nullable: true
+        early_checkout_attachment_path:
+          type: string
+          nullable: true
+        first_in_proof_path:
+          type: string
+          nullable: true
+        last_out_proof_path:
+          type: string
+          nullable: true
+        out_of_town:
+          type: boolean
+        holiday_name:
+          type: string
+          nullable: true
+        notes:
+          type: array
+          items:
+            type: string
+
+    AttendanceReportResponse:
+      type: object
+      properties:
+        summary:
+          $ref: "#/components/schemas/AttendanceRecapSummary"
+        daily:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttendanceReportDailyItem"
+
+    HolidayItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+        name:
+          type: string
+        dayName:
+          type: string
+        isHoliday:
+          type: boolean
+
+    UploadResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [attendance, leave, profile]
+        path:
+          type: string
+        storedPath:
+          type: string
+        url:
+          type: string
+        filename:
+          type: string
+        value:
+          type: string
+          description: Preferred value to send back into subsequent API requests. For profile uploads this is the avatar filename.
+        originalName:
+          type: string
+        sizeBytes:
+          type: integer
+
+    LeaveCreateRequest:
+      type: object
+      required: [leave_type_id, start_date, end_date, reason]
+      properties:
+        leave_type_id:
+          type: integer
+          description: Leave type ID. The selected leave type controls whether attachment is required via its `requiresAttachment` value.
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        reason:
+          type: string
+        attachment_path:
+          type: string
+          description: Existing uploaded attachment path. Required when the selected leave type requires attachment and no `attachment` file is sent.
+        attachment:
+          type: string
+          description: Attachment file or attachment value alias. Required when the selected leave type requires attachment and no `attachment_path` is sent.
+        submit_now:
+          type: boolean
+          description: Optional legacy flag. Leave-type validation still applies when this field is sent.
+        submitNow:
+          type: boolean
+          description: Optional camelCase alias for `submit_now`. Leave-type validation still applies when this field is sent.
+
+    LeaveCreateResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestNo:
+          type: string
+        status:
+          type: string
+        statusRaw:
+          type: string
+        workflow:
+          type: object
+          additionalProperties: true
+
+    LeaveItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestNo:
+          type: string
+        leaveTypeId:
+          type: integer
+        leaveTypeName:
+          type: string
+          nullable: true
+        leaveTypeCode:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        daysCount:
+          type: integer
+        reason:
+          type: string
+        status:
+          type: string
+        attachmentPath:
+          type: string
+          nullable: true
+
+    LeaveDetailResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestNo:
+          type: string
+        requester:
+          type: object
+          additionalProperties: true
+        leaveTypeId:
+          type: integer
+        leaveTypeName:
+          type: string
+          nullable: true
+        leaveTypeCode:
+          type: string
+          nullable: true
+        requiresAttachment:
+          type: integer
+        maxDaysPerRequest:
+          type: integer
+          nullable: true
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        daysCount:
+          type: integer
+        reason:
+          type: string
+        status:
+          type: string
+        statusRaw:
+          type: string
+        currentStep:
+          type: integer
+        attachmentPath:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        approvals:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaveApprovalProgressStep"
+
+    ApprovalTaskCounts:
+      type: object
+      properties:
+        pending:
+          type: integer
+        returned:
+          type: integer
+        total:
+          type: integer
+
+    ApprovalTaskListItem:
+      type: object
+      properties:
+        stepId:
+          type: integer
+        requestId:
+          type: integer
+          nullable: true
+        requestNo:
+          type: string
+          nullable: true
+        module:
+          type: string
+        requesterId:
+          type: integer
+          nullable: true
+        requesterName:
+          type: string
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        stepNo:
+          type: integer
+          nullable: true
+        stepName:
+          type: string
+          nullable: true
+        totalSteps:
+          type: integer
+          nullable: true
+        currentStep:
+          type: integer
+          nullable: true
+        action:
+          type: string
+          nullable: true
+        actionAt:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        canTakeAction:
+          type: boolean
+
+    LeaveApprovalTaskItem:
+      allOf:
+        - $ref: "#/components/schemas/ApprovalTaskListItem"
+        - type: object
+          properties:
+            requesterRole:
+              type: string
+              nullable: true
+            leaveTypeName:
+              type: string
+              nullable: true
+            startDate:
+              type: string
+              format: date
+              nullable: true
+            endDate:
+              type: string
+              format: date
+              nullable: true
+            daysCount:
+              type: integer
+              nullable: true
+
+    OvertimeApprovalTaskItem:
+      allOf:
+        - $ref: "#/components/schemas/ApprovalTaskListItem"
+        - type: object
+          properties:
+            overtimeTypeName:
+              type: string
+              nullable: true
+            overtimeDate:
+              type: string
+              format: date
+              nullable: true
+            startTime:
+              type: string
+              nullable: true
+            endTime:
+              type: string
+              nullable: true
+            durationHours:
+              type: number
+              format: float
+              nullable: true
+
+    LeaveApprovalTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        limit:
+          type: integer
+        counts:
+          $ref: "#/components/schemas/ApprovalTaskCounts"
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaveApprovalTaskItem"
+
+    OvertimeApprovalTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        limit:
+          type: integer
+        counts:
+          $ref: "#/components/schemas/ApprovalTaskCounts"
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OvertimeApprovalTaskItem"
+
+    ApprovalStepDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        stepNo:
+          type: integer
+        stepName:
+          type: string
+          nullable: true
+        action:
+          type: string
+        actionAt:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        canTakeAction:
+          type: boolean
+
+    ApprovalRequester:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        positionName:
+          type: string
+          nullable: true
+
+    LeaveApprovalProgressStep:
+      type: object
+      properties:
+        id:
+          type: integer
+        stepNo:
+          type: integer
+        stepName:
+          type: string
+          nullable: true
+        assignedApproverId:
+          type: integer
+          nullable: true
+        assignedApproverName:
+          type: string
+          nullable: true
+        assignedApproverRole:
+          type: string
+          nullable: true
+        actualApproverId:
+          type: integer
+          nullable: true
+        actualApproverName:
+          type: string
+          nullable: true
+        action:
+          type: string
+        actionAt:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    OvertimeApprovalProgressStep:
+      type: object
+      properties:
+        id:
+          type: integer
+        stepNo:
+          type: integer
+        stepName:
+          type: string
+          nullable: true
+        assignedApproverId:
+          type: integer
+          nullable: true
+        assignedApproverName:
+          type: string
+          nullable: true
+        actualApproverId:
+          type: integer
+          nullable: true
+        actualApproverName:
+          type: string
+          nullable: true
+        action:
+          type: string
+        actionAt:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    LeaveApprovalRequestSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestNo:
+          type: string
+        leaveTypeId:
+          type: integer
+        leaveTypeName:
+          type: string
+          nullable: true
+        leaveTypeCode:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        daysCount:
+          type: integer
+        reason:
+          type: string
+        status:
+          type: string
+        statusRaw:
+          type: string
+        attachmentPath:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    OvertimeApprovalRequestSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestNo:
+          type: string
+        overtimeTypeId:
+          type: integer
+        overtimeTypeName:
+          type: string
+          nullable: true
+        overtimeTypeCode:
+          type: string
+          nullable: true
+        overtimeDate:
+          type: string
+          format: date
+        startTime:
+          type: string
+        endTime:
+          type: string
+        durationHours:
+          type: number
+          format: float
+        reason:
+          type: string
+        status:
+          type: string
+        statusRaw:
+          type: string
+        attachmentPath:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    ApprovalWorkflowDetail:
+      type: object
+      properties:
+        currentStep:
+          type: integer
+          nullable: true
+        totalSteps:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          nullable: true
+
+    LeaveApprovalDetailResponse:
+      type: object
+      properties:
+        step:
+          $ref: "#/components/schemas/ApprovalStepDetail"
+        request:
+          $ref: "#/components/schemas/LeaveApprovalRequestSummary"
+        requester:
+          $ref: "#/components/schemas/ApprovalRequester"
+        workflow:
+          allOf:
+            - $ref: "#/components/schemas/ApprovalWorkflowDetail"
+            - type: object
+              properties:
+                steps:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/LeaveApprovalProgressStep"
+
+    OvertimeApprovalDetailResponse:
+      type: object
+      properties:
+        step:
+          $ref: "#/components/schemas/ApprovalStepDetail"
+        request:
+          $ref: "#/components/schemas/OvertimeApprovalRequestSummary"
+        requester:
+          $ref: "#/components/schemas/ApprovalRequester"
+        workflow:
+          allOf:
+            - $ref: "#/components/schemas/ApprovalWorkflowDetail"
+            - type: object
+              properties:
+                steps:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/OvertimeApprovalProgressStep"
+
+    LeaveQuotaResponse:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            totalDays:
+              type: integer
+            remainingDays:
+              type: integer
+            usedDays:
+              type: integer
+        quotas:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    LeaveTypesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaveTypeWithQuotaItem"
+
+    LeaveTypeWithQuotaItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        requiresAttachment:
+          type: boolean
+        maxDaysPerRequest:
+          type: integer
+          nullable: true
+        isActive:
+          type: boolean
+        quotaTotalDays:
+          type: integer
+        quotaRemainingDays:
+          type: integer
+        quotaUsedDays:
+          type: integer
+        quotaStatus:
+          type: string
+          description: Personal quota status for the authenticated user. Values may include `healthy`, `low`, `critical`, or `not_set`.
+        canApply:
+          type: boolean
+          description: Advisory flag for form UX. Final leave validation still happens on the leave create and submit endpoints.
+
+    LeaveQuotaDetailResponse:
+      type: object
+      properties:
+        quota:
+          type: object
+          additionalProperties: true
+        usageHistory:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    PerformanceSubmissionCreateRequest:
+      type: object
+      required: [template_id, items]
+      properties:
+        template_id:
+          type: integer
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              template_item_id:
+                type: integer
+              actual_value:
+                type: number
+                format: float
+
+    PerformanceSubmissionCreateResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        total_score:
+          type: number
+          format: float
+        message:
+          type: string
+
+    OvertimeCreateRequest:
+      type: object
+      required: [overtime_type_id, overtime_date, start_time, end_time, reason]
+      properties:
+        overtime_type_id:
+          type: integer
+        overtime_date:
+          type: string
+          format: date
+        start_time:
+          type: string
+          pattern: '^\\d{2}:\\d{2}$'
+        end_time:
+          type: string
+          pattern: '^\\d{2}:\\d{2}$'
+        reason:
+          type: string
+        attachment_path:
+          type: string
+        attachment:
+          type: string
+        bssid:
+          type: string
+
+    OvertimeCreateResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestNo:
+          type: string
+        status:
+          type: string
+        statusRaw:
+          type: string
+        durationHours:
+          type: number
+          format: float
+
+    OvertimeListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestNo:
+          type: string
+        overtimeTypeId:
+          type: integer
+        overtimeTypeName:
+          type: string
+          nullable: true
+        overtimeDate:
+          type: string
+          format: date
+        startTime:
+          type: string
+        endTime:
+          type: string
+        durationHours:
+          type: number
+          format: float
+        reason:
+          type: string
+        status:
+          type: string
+        statusRaw:
+          type: string
+        attachmentPath:
+          type: string
+          nullable: true
+
+    OvertimeDetailResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        requestNo:
+          type: string
+        requester:
+          type: object
+          additionalProperties: true
+        overtimeTypeId:
+          type: integer
+        overtimeTypeName:
+          type: string
+          nullable: true
+        overtimeTypeCode:
+          type: string
+          nullable: true
+        requiresAttachment:
+          type: integer
+        overtimeDate:
+          type: string
+          format: date
+        startTime:
+          type: string
+        endTime:
+          type: string
+        durationHours:
+          type: number
+          format: float
+        reason:
+          type: string
+        status:
+          type: string
+        statusRaw:
+          type: string
+        currentStep:
+          type: integer
+        totalSteps:
+          type: integer
+        attachmentPath:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        approvals:
+          type: array
+          items:
+            $ref: "#/components/schemas/OvertimeApprovalProgressStep"
+
+    OvertimeSummaryResponse:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            month:
+              type: string
+            totalHours:
+              type: number
+              format: float
+            approvedHours:
+              type: number
+              format: float
+            pendingHours:
+              type: number
+              format: float
+            requestCount:
+              type: integer
+        requests:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    ApprovalActionRequest:
+      type: object
+      properties:
+        notes:
+          type: string
+
+    ApprovalActionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        action:
+          type: string
+        isFinal:
+          type: boolean
+        nextStep:
+          type: integer
+          nullable: true
+        requestStatus:
+          type: string
+          nullable: true
+        requestStatusRaw:
+          type: string
+          nullable: true
+
+    LeaveApprovalActionResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApprovalActionResponse"
+        - type: object
+          properties:
+            quotaWarning:
+              type: string
+              nullable: true
