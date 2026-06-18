@@ -24,7 +24,7 @@ export const computeAttendanceBadge = (
     if (checkOutTime.getHours() < 17) {
       return { label: 'Pulang Awal', bgColor: '#fef3c7', textColor: '#d97706' };
     }
-    return { label: 'On Time', bgColor: '#d1fae5', textColor: '#10b981' };
+    return { label: 'Tepat Waktu', bgColor: '#d1fae5', textColor: '#047857' };
   }
 
   // Check-in only
@@ -32,7 +32,7 @@ export const computeAttendanceBadge = (
     const hour = checkInTime.getHours();
     const minute = checkInTime.getMinutes();
     if (hour < 8 || (hour === 8 && minute <= 14)) {
-      return { label: 'On Time', bgColor: '#d1fae5', textColor: '#10b981' };
+      return { label: 'Tepat Waktu', bgColor: '#d1fae5', textColor: '#047857' };
     }
     return { label: 'Terlambat', bgColor: '#fee2e2', textColor: '#ef4444' };
   }
