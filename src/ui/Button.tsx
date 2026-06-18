@@ -1,5 +1,6 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+import { tokens } from '@/config/tokens';
 import { cn } from '@/utils/cn';
 
 type ButtonProps = {
@@ -34,8 +35,8 @@ export const Button = ({
       style={style}
       className={cn(
         'flex-row items-center justify-center rounded-xl px-4 py-3',
-        variant === 'primary' && 'bg-brand-600',
-        variant === 'secondary' && 'bg-white border border-brand-600',
+        variant === 'primary' && 'bg-maroon-600',
+        variant === 'secondary' && 'bg-white border border-maroon-600',
         variant === 'ghost' && 'bg-transparent',
         isDisabled && 'opacity-50',
         className
@@ -44,14 +45,14 @@ export const Button = ({
       <View className="flex-row items-center gap-2">
         {loading ? (
           <ActivityIndicator
-            color={variant === 'primary' ? '#fff' : '#2454db'}
+            color={variant === 'primary' ? '#fff' : tokens.colors.maroon}
           />
         ) : null}
         <Text
           className={cn(
             'text-base font-semibold',
             variant === 'primary' && 'text-white',
-            variant !== 'primary' && 'text-brand-600',
+            variant !== 'primary' && 'text-maroon-600',
             labelClassName
           )}
           style={labelStyle}

@@ -1,5 +1,6 @@
 import { Modal, Pressable, Text, View } from 'react-native';
 import { useState } from 'react';
+import { tokens } from '@/config/tokens';
 import { cn } from '@/utils/cn';
 
 export type SelectOption = {
@@ -33,11 +34,15 @@ export const SelectField = ({
       <Pressable
         onPress={() => setOpen(true)}
         className={cn(
-          'rounded-xl border border-slate-200 bg-white px-3 py-3',
+          'rounded-xl border bg-white px-3 py-3',
           !value && 'text-slate-400'
         )}
+        style={{ borderColor: tokens.colors.borderWarm }}
       >
-        <Text className={cn('text-base text-ink-700', !value && 'text-slate-400')}>
+        <Text
+          className="text-base text-ink-700"
+          style={{ color: value ? tokens.colors.ink : tokens.colors.textMuted }}
+        >
           {selectedLabel ?? placeholder}
         </Text>
       </Pressable>
@@ -60,11 +65,16 @@ export const SelectField = ({
                     setOpen(false);
                   }}
                   className={cn(
-                    'rounded-xl px-3 py-3',
-                    option.value === value
-                      ? 'bg-brand-50 border border-brand-200'
-                      : 'bg-slate-50'
+                    'rounded-xl border px-3 py-3'
                   )}
+                  style={{
+                    backgroundColor:
+                      option.value === value ? '#F0E8EA' : '#F5F5F5',
+                    borderColor:
+                      option.value === value
+                        ? tokens.colors.maroon
+                        : 'transparent',
+                  }}
                 >
                   <Text className="text-base text-ink-700">
                     {option.label}

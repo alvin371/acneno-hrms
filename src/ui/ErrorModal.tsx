@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1e2a3a',
+    color: '#1A1A1A',
     textAlign: 'center',
     marginBottom: 6,
   },
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 14,
-    color: '#435066',
+    color: '#6B7280',
     textAlign: 'left',
     lineHeight: 20,
   },

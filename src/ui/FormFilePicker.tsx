@@ -11,6 +11,7 @@ import {
   requestMultiple,
   RESULTS,
 } from 'react-native-permissions';
+import { tokens } from '@/config/tokens';
 import { cn } from '@/utils/cn';
 import { showErrorModal } from '@/utils/errorModal';
 
@@ -77,8 +78,8 @@ export const FormFilePicker = <T extends FieldValues>({
   control,
   name,
   label,
-  buttonLabel = 'Upload file',
-  placeholder = 'No file selected',
+  buttonLabel = 'Pilih file',
+  placeholder = 'Belum ada file dipilih',
   helperText,
   loading,
   onPick,
@@ -102,15 +103,16 @@ export const FormFilePicker = <T extends FieldValues>({
             </Text>
             <View
               className={cn(
-                'flex-row items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-3',
+                'flex-row items-center justify-between rounded-xl border bg-white px-3 py-3',
                 inputClassName
               )}
+              style={{ borderColor: tokens.colors.borderWarm }}
             >
               <Text
-                className={cn(
-                  'flex-1 pr-3 text-base',
-                  resolvedName ? 'text-ink-700' : 'text-slate-400'
-                )}
+                className="flex-1 pr-3 text-base"
+                style={{
+                  color: resolvedName ? tokens.colors.ink : tokens.colors.textMuted,
+                }}
                 numberOfLines={1}
               >
                 {resolvedName || placeholder}
@@ -118,7 +120,7 @@ export const FormFilePicker = <T extends FieldValues>({
               <Pressable
                 className={cn(
                   'rounded-lg px-3 py-2',
-                  loading ? 'bg-slate-300' : 'bg-brand-600'
+                  loading ? 'bg-black/10' : 'bg-maroon-600'
                 )}
                 disabled={loading}
                 onPress={async () => {

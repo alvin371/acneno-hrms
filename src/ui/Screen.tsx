@@ -1,6 +1,7 @@
-import { ReactNode } from 'react';
+import { ReactNode, useContext } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { tokens } from '@/config/tokens';
 import { cn } from '@/utils/cn';
@@ -28,15 +29,23 @@ export const Screen = ({
   safeAreaStyle,
   contentContainerStyle,
 }: ScreenProps) => {
+  const bottomTabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  const bottomSpacing =
+    tokens.spacing.page + bottomTabBarHeight + (bottomTabBarHeight > 0 ? 16 : 0);
+
   if (scroll) {
     return (
       <SafeAreaView
-        className={cn('flex-1 bg-slate-50', safeAreaClassName)}
+        className={cn('flex-1 bg-warm', safeAreaClassName)}
         style={safeAreaStyle}
       >
         <ScrollView
           contentContainerStyle={[
-            { padding: tokens.spacing.page },
+            {
+              flexGrow: 1,
+              padding: tokens.spacing.page,
+              paddingBottom: bottomSpacing,
+            },
             contentContainerStyle,
           ]}
           className={cn('flex-1', className)}
@@ -46,8 +55,8 @@ export const Screen = ({
               <RefreshControl
                 refreshing={refreshing ?? false}
                 onRefresh={onRefresh}
-                colors={['#2454db']}
-                tintColor="#2454db"
+                colors={[tokens.colors.maroon]}
+                tintColor={tokens.colors.maroon}
               />
             ) : undefined
           }
@@ -59,10 +68,16 @@ export const Screen = ({
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
+    <SafeAreaView className="flex-1 bg-warm">
       <View
         className={cn('flex-1', className)}
-        style={[{ padding: tokens.spacing.page }, style]}
+        style={[
+          {
+            padding: tokens.spacing.page,
+            paddingBottom: bottomSpacing,
+          },
+          style,
+        ]}
       >
         {children}
       </View>
